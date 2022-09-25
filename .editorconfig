@@ -1,0 +1,11 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+[*.d]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+dfmt_soft_max_line_length = 80
+dfmt_brace_style = stroustrup
