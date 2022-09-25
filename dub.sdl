@@ -3,3 +3,9 @@ description "Collection"
 authors "nonanonno"
 license "MIT"
 copyright "Copyright © 2022, nonanonno"
+targetType "none"
+
+subPackage {
+    name "console"
+    sourceFiles "source/nagi/console.d"
+}
