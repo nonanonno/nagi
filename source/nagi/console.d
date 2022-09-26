@@ -1,6 +1,6 @@
 module nagi.consile;
 
-version (linux) {
+version (Posix) {
     version = ansi;
 }
 
