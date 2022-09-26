@@ -8,7 +8,7 @@
 
 Provides console colorizer functions with the following features.
 
-- Support linux ANSI color (foreground/background color, glyphs and 256 colors)
+- Support Posix(Linux, FreeBSD, OSX, Solaris, etc.) ANSI color (foreground/background color, glyphs and 256 colors)
 - Stateless colorizing (You don't need to call reset after setting color)
 - Build your original code combination (e.g. Red foreground, yellow background, bold and underline)
 
