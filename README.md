@@ -44,6 +44,7 @@ Provides table making functions. The notable feature is the compatibility with e
 
 ```d
 // Example
+// Note that the layout may be broken due to your browser/editor's font.
 import std.stdio;
 import nagi.tabletool;
 
