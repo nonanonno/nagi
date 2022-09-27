@@ -10,3 +10,10 @@ subPackage {
     importPaths "source/console"
     sourcePaths "source/console"
 }
+
+subPackage {
+    name "tabletool"
+    importPaths "source/tabletool"
+    sourcePaths "source/tabletool"
+    dependency "east_asian_width" version="~>1.1.0"
+}
