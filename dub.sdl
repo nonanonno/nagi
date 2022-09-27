@@ -7,5 +7,6 @@ targetType "none"
 
 subPackage {
     name "console"
-    sourceFiles "source/nagi/console.d"
+    importPaths "source/console"
+    sourcePaths "source/console"
 }
