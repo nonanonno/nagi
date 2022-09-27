@@ -1,5 +1,5 @@
 name "nagi"
-description "Collection"
+description "A Collection of D libraries"
 authors "nonanonno"
 license "MIT"
 copyright "Copyright © 2022, nonanonno"
