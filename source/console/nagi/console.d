@@ -252,7 +252,7 @@ pure nothrow {
 }
 
 @("Display all colorizing functions")
-unittest {
+debug (Example) unittest {
     import std.stdio : write;
 
     static foreach (i, color; [
@@ -279,7 +279,7 @@ unittest {
 }
 
 @("Display combination")
-unittest {
+debug (Example) unittest {
     import std.stdio : writeln;
 
     string italic = "italic".italic;
@@ -291,7 +291,7 @@ unittest {
 }
 
 @("Build your own code combination")
-unittest {
+debug (Example) unittest {
     import std.stdio : writeln;
 
     with (Code) {
@@ -302,7 +302,7 @@ unittest {
 }
 
 @("Display 256 colors")
-unittest {
+debug (Example) unittest {
     import std.stdio : write;
     import std.conv : to;
 
