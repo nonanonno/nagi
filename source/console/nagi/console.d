@@ -119,7 +119,7 @@ version (ansi) {
     }
 }
 
-pure nothrow {
+pure nothrow @safe {
     /// Reset all colors and text effects.
     string reset(string text) {
         return Reset.all ~ text;
