@@ -22,3 +22,10 @@ subPackage {
     sourcePaths "source/tabletool"
     dependency "east_asian_width" version="~>1.1.0"
 }
+
+subPackage {
+    name "logging"
+    importPaths "source/logging"
+    sourcePaths "source/logging"
+    dependency "nagi:console" version="*" path="."
+}
