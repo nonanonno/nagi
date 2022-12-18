@@ -4,6 +4,7 @@
 | -------------------------------- | ------------------------------------ |
 | [nagi:console](#nagiconsole)     | Provides console colorizer functions |
 | [nagi:tabletool](#nagitabletool) | Provides table making functions      |
+| [nagi:logging](#nagilogging)     | Provides Logger implementations      |
 
 ## nagi:console
 
@@ -55,10 +56,10 @@ const data = [
 const header = ["マスコットキャラクタ", "about"];
 writeln(tabulate(data, header));
 /* Output:
- マスコットキャラクタ          about         
+ マスコットキャラクタ          about
 ---------------------- ----------------------
-        D-man           Programming Language 
-      D言語くん          プログラミング言語  
+        D-man           Programming Language
+      D言語くん          プログラミング言語
 */
 
 // Also works with struct
@@ -84,5 +85,62 @@ writeln(tabulate(structData, Config(Style.grid, Align.center, true)));
 ├──────────────────────┼──────────────────────┤
 │      D言語くん       │  プログラミング言語  │
 └──────────────────────┴──────────────────────┘
+*/
+```
+
+## nagi:logging
+
+Provides some Logger implementation based on `std.logger`. The following `Logger` is defined.
+
+- `FormatLogger` : Another file logger whose log message format can be modified by associating delegate.
+- `EnvLogger` : A file logger whose `LogLevel` and colorization can be switched via environment variables `D_LOG` and `D_LOG_COLOR`.
+- `TeeLogger` : A multi logger implementation the message is sent to both stdout and file.
+    - `FormatTeeLogger` : Internal logger is `FormatLogger`
+    - `EnvTeeLogger` : Internal logger is `EnvLogger`
+
+```d
+// Example
+import nagi.logging;
+import std.experimental.logger;
+import std.stdio : stdout;
+
+sharedLog = new FormatLogger(stdout);
+
+info("This is info");
+error("This is error");
+/* Output:
+2022-12-18T10:45:36.545 info app.d:8: This is info
+2022-12-18T10:45:36.546 error app.d:9: This is error
+*/
+
+sharedLog = new FormatLogger(stdout).setFormatter((ref Record record) => record.msg);
+
+info("This is info");
+error("This is error");
+/* Output:
+This is info
+This is error
+*/
+```
+
+```d
+// Example (app.d)
+import nagi.logging;
+import std.experimental.logger;
+import std.stdio : stdout;
+
+void main() {
+    sharedLog = new FormatLogger(stdout);
+
+    info("This is info");
+    error("This is error");
+}
+
+/* > rdmd app.d
+2022-12-18T10:51:26.062 info app.d:8: This is info
+2022-12-18T10:51:26.062 error app.d:9: This is error
+*/
+/* > D_LOG=error rdmd app.d
+2022-12-18T10:52:00.262 error app.d:9: This is error
 */
 ```
