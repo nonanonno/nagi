@@ -1,4 +1,4 @@
-module nagi.consile;
+module nagi.console;
 
 version (Posix) {
     version = ansi;
