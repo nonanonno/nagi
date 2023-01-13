@@ -5,10 +5,15 @@ license "MIT"
 copyright "Copyright © 2022, nonanonno"
 targetType "library"
 
-sourcePaths "source/console" "source/logging" "source/tabletool"
-importPaths "source/console" "source/logging" "source/tabletool"
+sourcePaths "source/argparse" "source/console" "source/logging" "source/tabletool"
+importPaths "source/argparse" "source/console" "source/logging" "source/tabletool"
 dependency "east_asian_width" version="~>1.1.0"
 
+subPackage {
+    name "argparse"
+    importPaths "source/argparse"
+    sourcePaths "source/argparse"
+}
 
 subPackage {
     name "console"
