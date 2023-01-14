@@ -55,6 +55,14 @@ struct Arg {
     package bool isOptional() const @nogc pure @safe {
         return optShort_ != '\0' || optLong_ != null;
     }
+
+    package string genShort() const {
+        return optShort_ == '-' ? ("-" ~ name_[0]) : optShort_ != '\0' ? ("-" ~ optShort_) : null;
+    }
+
+    package string genLong() const {
+        return optLong_ == "--" ? ("--" ~ name_) : optLong_ != null ? ("--" ~ optLong_) : null;
+    }
 }
 
 struct Command {
@@ -95,6 +103,12 @@ struct Command {
         parser.shortDescription_ = this.shortDescription_;
         parser.positionals_ = generateArgPositionals();
         parser.optionals_ = generateArgOptionals(generateHelpOption_);
+
+        if (this.generateHelpOption_) {
+            parser.helpOption_ = ArgOptional(
+                "help", "Display this message.", "-h", "--help", false, NArgs.zero);
+        }
+
         parser.subParsers_ = this.subParsers_;
 
         return parser;
@@ -118,18 +132,11 @@ struct Command {
 
     private ArgOptional[] generateArgOptionals(bool genHelp) {
         auto args = this.args_.filter!(a => a.isOptional()).array();
-        if (genHelp) {
-            args ~= Arg("help")
-                .optShort()
-                .optLong()
-                .nArgs(NArgs.zero)
-                .help("Display this message.");
-        }
         return args.map!(a => ArgOptional(
                 a.name_,
                 a.helpText_,
-                a.optShort_ == '-' ? a.name_[0] : a.optShort_,
-                a.optLong_ == "--" ? a.name_ : a.optLong_,
+                a.genShort(),
+                a.genLong(),
                 a.isRequired_,
                 a.nArgs_,
         )).array();
@@ -171,12 +178,13 @@ unittest {
         ], text(parser.positionals_));
 
     assert(parser.optionals_ == [
-            ArgOptional("config", "Help for config.", 'c', "config", true, NArgs.one),
-            ArgOptional("flag", "Help for flag.", 'f', null, false, NArgs.zero),
-            ArgOptional("environment", "Help for environment.", '\0', "env", false, NArgs.any),
-            ArgOptional("foo", null, '\0', "foo", false, NArgs.one),
-            ArgOptional("help", "Display this message.", 'h', "help", false, NArgs.zero),
+            ArgOptional("config", "Help for config.", "-c", "--config", true, NArgs.one),
+            ArgOptional("flag", "Help for flag.", "-f", null, false, NArgs.zero),
+            ArgOptional("environment", "Help for environment.", null, "--env", false, NArgs.any),
+            ArgOptional("foo", null, null, "--foo", false, NArgs.one),
         ], text(parser.optionals_));
+    assert(parser.helpOption_ == ArgOptional("help", "Display this message.", "-h", "--help", false, NArgs
+            .zero));
 
     assert(parser.subParsers_.length == 0);
 }
@@ -196,7 +204,7 @@ unittest {
 
     assert(parser.name_ == "command");
     assert(parser.positionals_.length == 0);
-    assert(parser.optionals_.length == 2);
+    assert(parser.optionals_.length == 1);
     assert(parser.subParsers_.length == 2);
 
     assert(parser.subParsers_[0].name_ == "sub1");
