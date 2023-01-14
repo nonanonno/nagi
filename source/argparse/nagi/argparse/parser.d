@@ -639,35 +639,9 @@ private void parseImpl(
         return;
     }
     if (startsWith(args[0], "-")) {
-        auto found = optionals.find!(o => o.optShort == args[0] || o.optLong == args[0]);
-        if (found.length == 0) {
-            throw new ArgumentException(text("Unknown option ", args[0], " found"));
-        }
-        found[0].count++;
-        with (NArgs) final switch (found[0].nArgs) {
-        case zero:
-            result.args[found[0].name] = true;
-            parseImpl(args[1 .. $], positionals, optionals, result);
-            break;
-        case one:
-            if (args.length < 2) {
-                throw new ArgumentException(text("Need one following argument for ", args[0]));
-            }
-            result.args[found[0].name] = args[1];
-            parseImpl(args[2 .. $], positionals, optionals, result);
-            break;
-        case any:
-            if (args.length < 2) {
-                throw new ArgumentException(text("Need one following argument for ", args[0]));
-            }
-            if (found[0].name !in result) {
-                result[found[0].name] = [args[1]];
-            }
-            else {
-                result[found[0].name] ~= args[1];
-            }
-            parseImpl(args[2 .. $], positionals, optionals, result);
-        }
+        auto consumeArgs = parseArgOptional(args, optionals, result);
+        assert(consumeArgs > 0);
+        parseImpl(args[consumeArgs .. $], positionals, optionals, result);
     }
     else {
         if (positionals.length == 0) {
@@ -680,6 +654,81 @@ private void parseImpl(
             parseImpl(args[1 .. $], positionals[1 .. $], optionals, result);
         }
     }
+}
+
+private int parseArgOptional(in string[] args, ref Counter!(ArgOptional)[] optionals, ParseResult result) {
+    auto opt = parseOption(args[0]);
+    auto found = optionals.find!(o => o.optShort == opt[0] || o.optLong == opt[0]);
+    if (found.length == 0) {
+        throw new ArgumentException(text("Unknown option ", args[0], " found"));
+    }
+    found[0].count++;
+
+    int consumeArgs = 0;
+    auto id = found[0].name;
+
+    with (NArgs) final switch (found[0].nArgs) {
+    case zero:
+        consumeArgs = 1;
+        if (opt.length == 1) {
+            result.args[id] = true;
+        }
+        else {
+            result.args[id] = opt[1].to!bool;
+        }
+        break;
+    case one:
+        if (opt.length == 1) {
+            if (args.length < 2) {
+                throw new ArgumentException(text("Need one following argument for ", args[0]));
+            }
+            result.args[id] = args[1];
+            consumeArgs = 2;
+        }
+        else {
+            result.args[id] = opt[1];
+            consumeArgs = 1;
+        }
+        break;
+    case any:
+        result.args.require(id, ParseValue(cast(string[])[]));
+        if (opt.length == 1) {
+            if (args.length < 2) {
+                throw new ArgumentException(text("Need one following argument for ", args[0]));
+            }
+            result.args[id] ~= args[1];
+            consumeArgs = 2;
+        }
+        else {
+            result.args[id] ~= opt[1];
+            consumeArgs = 1;
+        }
+        break;
+    }
+    return consumeArgs;
+}
+
+private string[] parseOption(string arg) {
+    import std.regex;
+
+    auto equalPattern = regex(r"(--?[\w-_]+)=(.+)");
+    if (auto m = matchFirst(arg, equalPattern)) {
+        return [m[1], m[2]];
+    }
+    else {
+        return [arg];
+    }
+}
+
+unittest {
+    assert(parseOption("--opt") == ["--opt"]);
+    assert(parseOption("-o") == ["-o"]);
+    assert(parseOption("--opt=OPT") == ["--opt", "OPT"]);
+    assert(parseOption("-o=OPT") == ["-o", "OPT"]);
+    assert(parseOption("--opt=OPT=FOO") == ["--opt", "OPT=FOO"]);
+    assert(parseOption("-o=OPT=FOO") == ["-o", "OPT=FOO"]);
+    assert(parseOption("--opt-opt=OPT=FOO") == ["--opt-opt", "OPT=FOO"]);
+    assert(parseOption("--opt_opt=OPT=FOO") == ["--opt_opt", "OPT=FOO"]);
 }
 
 @("Positional argument can be parsed by parseImpl")
@@ -846,6 +895,35 @@ unittest {
     assert(result.trail == ["-p", "ABC", "--qqq", "123", "--qqq", "456"]);
 }
 
+@("--option=OPT pattern")
+unittest {
+    auto optionals = [
+        ArgOptional("opt1", "", "-o", "--opt1", false, NArgs.zero),
+        ArgOptional("opt2", "", "-p", "--opt2", false, NArgs.one),
+        ArgOptional("opt3", "", "-q", "--opt3", false, NArgs.any),
+    ];
+    {
+        auto result = new ParseResult();
+        parseImpl(["-o=true", "-p=ABC", "-q=123", "-q=456"], [], counted(optionals), result);
+        assert("opt1" in result && result["opt1"].as!bool == true);
+        assert("opt2" in result && result["opt2"].as!string == "ABC");
+        assert("opt3" in result && result["opt3"].as!(int[]) == [123, 456]);
+    }
+    {
+        auto result = new ParseResult();
+        parseImpl(["--opt1=true", "--opt2=ABC", "--opt3=123", "--opt3=456"], [], counted(optionals), result);
+        assert("opt1" in result && result["opt1"].as!bool == true);
+        assert("opt2" in result && result["opt2"].as!string == "ABC");
+        assert("opt3" in result && result["opt3"].as!(int[]) == [123, 456]);
+    }
+    {
+        auto result = new ParseResult();
+        parseImpl(["--opt1=false"], [], counted(optionals), result);
+        assert("opt1" in result && result["opt1"].as!bool == false);
+    }
+
+}
+
 private string[] parseImplForSubParser(
     string[] args,
     Counter!(ArgOptional)[] optionals,
@@ -859,33 +937,9 @@ private string[] parseImplForSubParser(
         return [];
     }
     if (startsWith(args[0], "-")) {
-        auto found = optionals.find!(o => o.optShort == args[0] || o.optLong == args[0]);
-        if (found.length == 0) {
-            throw new ArgumentException(text("Unknown option ", args[0], " found"));
-        }
-        found[0].count++;
-        with (NArgs) final switch (found[0].nArgs) {
-        case zero:
-            result.args[found[0].name] = true;
-            return parseImplForSubParser(args[1 .. $], optionals, result);
-        case one:
-            if (args.length < 2) {
-                throw new ArgumentException(text("Need one following argument for ", args[0]));
-            }
-            result.args[found[0].name] = args[1];
-            return parseImplForSubParser(args[2 .. $], optionals, result);
-        case any:
-            if (args.length < 2) {
-                throw new ArgumentException(text("Need one following argument for ", args[0]));
-            }
-            if (found[0].name !in result) {
-                result[found[0].name] = [args[1]];
-            }
-            else {
-                result[found[0].name] ~= args[1];
-            }
-            return parseImplForSubParser(args[2 .. $], optionals, result);
-        }
+        auto consumeArgs = parseArgOptional(args, optionals, result);
+        assert(consumeArgs > 0);
+        return parseImplForSubParser(args[consumeArgs .. $], optionals, result);
     }
     else {
         return args;
