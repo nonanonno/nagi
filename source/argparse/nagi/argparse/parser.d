@@ -7,10 +7,32 @@ import std.algorithm;
 import std.array;
 import std.string;
 import std.conv;
+import std.exception;
 
 class ArgumentParser {
     ParseResult parse(string[] argsWithCommandName) {
+        if (subParsers_.length == 0) {
+            return parseAsEndPoint(argsWithCommandName);
+        }
+        else {
+            return parseAsSubParsers(argsWithCommandName);
+        }
+    }
+
+    package this() {
+    }
+
+    package string name_;
+    package string helpText_;
+    package string shortDescription_;
+    package ArgPositional[] positionals_;
+    package ArgOptional[] optionals_;
+    package ArgOptional helpOption_;
+    package ArgumentParser[] subParsers_;
+
+    private ParseResult parseAsEndPoint(string[] argsWithCommandName) {
         assert(argsWithCommandName.length > 0);
+        assert(subParsers_.length == 0);
         if (helpOption_.name) {
             if (canFind(argsWithCommandName, helpOption_.optShort) ||
                 canFind(argsWithCommandName, helpOption_.optLong)
@@ -40,20 +62,36 @@ class ArgumentParser {
         return result;
     }
 
-    package this() {
+    private ParseResult parseAsSubParsers(string[] argsWithCommandName) {
+        assert(argsWithCommandName.length > 0);
+        assert(positionals_.length == 0);
+        auto prog = argsWithCommandName[0];
+        auto optionals = counted(helpOption_.name !is null ? (helpOption_ ~ optionals_) : optionals_);
+        auto result = new ParseResult();
+        auto argsForSubParser = parseImplForSubParser(argsWithCommandName[1 .. $], optionals, result);
+        if (helpOption_.name && helpOption_.name in result) {
+            // ToDo: Show help message here.
+            return null;
+        }
+        enforce!ArgumentException(argsForSubParser.length > 0, text("Need a command"));
+        auto foundSubParsers = this.subParsers_.find!(p => p.name_ == argsForSubParser[0]);
+
+        enforce!ArgumentException(foundSubParsers.length > 0,
+            text("Unknown command ", argsForSubParser[0], " found."));
+
+        auto subParser = foundSubParsers[0];
+        auto subParserResult = subParser.parse(argsForSubParser);
+        if (subParserResult is null) {
+            // help is specified.
+            return null;
+        }
+        result.subCommand = tuple(subParser.name_, subParserResult);
+
+        return result;
     }
-
-    package string name_;
-    package string helpText_;
-    package string shortDescription_;
-    package ArgPositional[] positionals_;
-    package ArgOptional[] optionals_;
-    package ArgOptional helpOption_;
-    package ArgumentParser[] subParsers_;
-
 }
 
-@("ArgumentParser.parse")
+@("ArgumentParser.parse for end point")
 unittest {
     auto parser = new ArgumentParser();
     parser.positionals_ = [
@@ -92,6 +130,141 @@ unittest {
         assert("o" in result && result["o"].as!bool == false);
         assert("p" !in result);
         assert("q" in result && result["q"].as!(string[]) == [], text(result));
+    }
+}
+
+@("Help for ArgumentParser end point")
+unittest {
+    auto parser = new ArgumentParser();
+    parser.positionals_ = [
+        ArgPositional("pos1", "", true),
+        ArgPositional("pos2", "", false),
+    ];
+    parser.optionals_ = [
+        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
+        ArgOptional("p", "", "-p", null, false, NArgs.one),
+        ArgOptional("q", "", null, "--qqq", false, NArgs.any),
+    ];
+    parser.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+
+    assert(parser.parse(["prog", "-h"]) is null);
+    assert(parser.parse(["prog", "--help"]) is null);
+    assert(parser.parse(["prog", "POS1", "-o", "--help"]) is null);
+
+}
+
+@("ArgmentParser.parse for subparsers")
+unittest {
+    auto parser = new ArgumentParser();
+    auto sub1 = new ArgumentParser();
+    auto sub2 = new ArgumentParser();
+    auto sub2sub = new ArgumentParser();
+
+    sub1.name_ = "sub1";
+    sub2.name_ = "sub2";
+    sub2.subParsers_ ~= sub2sub;
+    sub2sub.name_ = "subsub";
+    parser.subParsers_ ~= sub1;
+    parser.subParsers_ ~= sub2;
+
+    {
+        auto ret = parser.parse(["prog", "sub1"]);
+        assert(ret !is null);
+        assert(ret.subCommand.name == "sub1");
+        assert(ret.subCommand.result !is null);
+    }
+    {
+        auto ret = parser.parse(["prog", "sub2", "subsub"]);
+        assert(ret !is null);
+        assert(ret.subCommand.name == "sub2");
+        assert(ret.subCommand.result !is null);
+        assert(ret.subCommand.result.subCommand.name == "subsub");
+        assert(ret.subCommand.result.subCommand.result !is null);
+    }
+
+}
+
+@("SubParsers with options")
+unittest {
+    auto parser = new ArgumentParser();
+    auto sub1 = new ArgumentParser();
+    auto sub2 = new ArgumentParser();
+    auto sub2sub = new ArgumentParser();
+
+    parser.subParsers_ = [sub1, sub2];
+    parser.optionals_ = [
+        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
+        ArgOptional("p", "", "-p", null, false, NArgs.one),
+        ArgOptional("q", "", null, "--qqq", false, NArgs.any),
+    ];
+    parser.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+
+    sub1.name_ = "sub1";
+    sub1.optionals_ = [
+        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
+    ];
+    sub1.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+
+    sub2.name_ = "sub2";
+    sub2.optionals_ = [
+        ArgOptional("p", "", "-p", null, false, NArgs.one),
+    ];
+    sub2.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+    sub2.subParsers_ = [sub2sub];
+
+    sub2sub.name_ = "sub";
+    sub2sub.optionals_ = [
+        ArgOptional("q", "", null, "--qqq", false, NArgs.any),
+    ];
+    sub2sub.positionals_ = [
+        ArgPositional("pos1", "", true),
+        ArgPositional("pos2", "", false),
+    ];
+    sub2sub.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+
+    // help
+    {
+        auto ret = parser.parse(["prog", "-h"]);
+        assert(ret is null);
+    }
+    {
+        auto ret = parser.parse(["prog", "-o", "-h"]);
+        assert(ret is null);
+    }
+    {
+        auto ret = parser.parse(["prog", "-o", "-h", "sub1"]);
+        assert(ret is null);
+    }
+    {
+        auto ret = parser.parse(["prog", "sub1", "-h"]);
+        assert(ret is null);
+    }
+    {
+        auto ret = parser.parse(["prog", "sub2", "-h"]);
+        assert(ret is null);
+    }
+    {
+        auto ret = parser.parse(["prog", "sub2", "-h", "sub"]);
+        assert(ret is null);
+    }
+    {
+        auto ret = parser.parse(["prog", "sub2", "sub", "-h"]);
+        assert(ret is null);
+    }
+
+    // Options
+    {
+        auto ret = parser.parse([
+            "prog", "-o", "sub2", "-p", "ABC", "sub", "123"
+        ]);
+        assert(ret !is null);
+        assert("o" in ret && ret["o"].as!bool == true);
+        assert(ret.subCommand.name == "sub2");
+        assert("p" in ret.subCommand.result && ret.subCommand.result["p"].as!string == "ABC");
+        assert(ret.subCommand.result.subCommand.name == "sub");
+        assert("pos1" in ret.subCommand.result.subCommand.result && ret
+                .subCommand.result.subCommand.result["pos1"].as!int == 123);
+
     }
 }
 
@@ -180,7 +353,9 @@ unittest {
 
     assert(ParseValue(["abc", "def"]).as!(string[]) == ["abc", "def"]);
     assert(ParseValue(["123", "456"]).as!(int[]) == [123, 456]);
-    assert(ParseValue(["123.45", "456.78"]).as!(double[]) == [123.45, 456.78]);
+    assert(ParseValue(["123.45", "456.78"]).as!(double[]) == [
+            123.45, 456.78
+        ]);
     assert(ParseValue([123, 456]).as!(int[]) == [123, 456]);
     assert(ParseValue([123.45, 456.78]).as!(double[]) == [123.45, 456.78]);
 }
@@ -322,7 +497,8 @@ unittest {
     }
     {
         auto result = new ParseResult();
-        parseImpl(["POS1", "123", "REST1", "REST2"], counted(positionals), [], result);
+        parseImpl(["POS1", "123", "REST1", "REST2"], counted(positionals), [
+            ], result);
         assert("pos1" in result && result["pos1"].as!string == "POS1");
         assert("pos2" in result && result["pos2"].as!int == 123);
         assert(result.trail == ["REST1", "REST2"]);
@@ -455,7 +631,8 @@ unittest {
 
     auto result = new ParseResult();
     parseImpl([
-        "POS", "123.45", "-o", "--", "-p", "ABC", "--qqq", "123", "--qqq", "456",
+        "POS", "123.45", "-o", "--", "-p", "ABC", "--qqq", "123", "--qqq",
+        "456",
     ], counted(positionals), counted(optionals), result);
     assert("pos1" in result && result["pos1"].as!string == "POS");
     assert("pos2" in result && result["pos2"].as!double == 123.45);
@@ -487,5 +664,51 @@ private void validate(in Counter!ArgOptional arg) {
             enforce!ArgumentException(arg.count > 0, text("Optional argument ", arg.name, " should be specified"));
             break;
         }
+    }
+}
+
+string[] parseImplForSubParser(
+    string[] args,
+    Counter!(ArgOptional)[] optionals,
+    ParseResult result,
+) {
+    if (args.length == 0) {
+        return [];
+    }
+    if (args[0] == "--") {
+        result.trail ~= args[1 .. $];
+        return [];
+    }
+    if (startsWith(args[0], "-")) {
+        auto found = optionals.find!(o => o.optShort == args[0] || o.optLong == args[0]);
+        if (found.length == 0) {
+            throw new ArgumentException(text("Unknown option ", args[0], " found"));
+        }
+        found[0].count++;
+        with (NArgs) final switch (found[0].nArgs) {
+        case zero:
+            result.args[found[0].name] = true;
+            return parseImplForSubParser(args[1 .. $], optionals, result);
+        case one:
+            if (args.length < 2) {
+                throw new ArgumentException(text("Need one following argument for ", args[0]));
+            }
+            result.args[found[0].name] = args[1];
+            return parseImplForSubParser(args[2 .. $], optionals, result);
+        case any:
+            if (args.length < 2) {
+                throw new ArgumentException(text("Need one following argument for ", args[0]));
+            }
+            if (found[0].name !in result) {
+                result[found[0].name] = [args[1]];
+            }
+            else {
+                result[found[0].name] ~= args[1];
+            }
+            return parseImplForSubParser(args[2 .. $], optionals, result);
+        }
+    }
+    else {
+        return args;
     }
 }
