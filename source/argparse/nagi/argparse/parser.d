@@ -108,7 +108,7 @@ class ArgumentParser {
             buffer ~= "[OPTION] ";
         }
         if (this.subParsers_.length > 0) {
-            buffer ~= format("{%-(%s,%)} ", this.subParsers_.map!(p => p.name_));
+            buffer ~= format("{%-(%s,%)} ... ", this.subParsers_.map!(p => p.name_));
         }
         if (this.positionals_.length > 0) {
             buffer ~= format("%-(%s %) ", this.positionals_.map!(p => sampleText(p)));
@@ -933,7 +933,7 @@ private void validate(in Counter!ArgOptional arg) {
     }
 }
 
-string displayName(in ArgOptional arg) {
+private string displayName(in ArgOptional arg) {
     auto state = (arg.optShort ? 0b10 : 0b00) | (arg.optLong ? 0b01 : 0b00);
     switch (state) {
     case 0b11:
@@ -947,7 +947,7 @@ string displayName(in ArgOptional arg) {
     }
 }
 
-string sampleText(in ArgPositional arg) {
+private string sampleText(in ArgPositional arg) {
     if (arg.isRequired) {
         return text("<", arg.name.toUpper(), ">");
     }
@@ -956,7 +956,7 @@ string sampleText(in ArgPositional arg) {
     }
 }
 
-string sampleText(in ArgOptional arg) {
+private string sampleText(in ArgOptional arg) {
     with (NArgs) final switch (arg.nArgs) {
     case zero:
         return displayName(arg);
@@ -967,23 +967,23 @@ string sampleText(in ArgOptional arg) {
     }
 }
 
-string sampleText(in ArgumentParser arg) {
+private string sampleText(in ArgumentParser arg) {
     return arg.name_;
 }
 
-string descriptionText(in ArgPositional arg) {
+private string descriptionText(in ArgPositional arg) {
     return arg.helpText;
 }
 
-string descriptionText(in ArgOptional arg) {
+private string descriptionText(in ArgOptional arg) {
     return arg.helpText;
 }
 
-string descriptionText(in ArgumentParser arg) {
+private string descriptionText(in ArgumentParser arg) {
     return arg.shortDescription_;
 }
 
-string generateHelpItem(T)(in T arg, int nameBoxWidth, int helpBoxWidth, int gapWidth) {
+private string generateHelpItem(T)(in T arg, int nameBoxWidth, int helpBoxWidth, int gapWidth) {
     auto name = sampleText(arg);
     auto helpText = descriptionText(arg);
     auto indent = replicate(" ", gapWidth + nameBoxWidth);
