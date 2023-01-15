@@ -385,6 +385,79 @@ unittest {
     }
 }
 
+@("nArgs for positional argument")
+unittest {
+    auto id = "id";
+    {
+        auto positionals = [
+            ArgPositional(id, "", true, fromText("."), &defaultArgPositionalAction),
+        ];
+        auto result = new ParseResult();
+        parseImpl(["POS1", "POS2"], counted(positionals), [], result);
+        assert(id in result && result[id] == "POS1");
+    }
+    {
+        auto positionals = [
+            ArgPositional(id, "", true, fromText("?"), &defaultArgPositionalAction),
+        ];
+        auto result = new ParseResult();
+        parseImpl(["POS1", "POS2"], counted(positionals), [], result);
+        assert(id in result && result[id] == "POS1");
+    }
+    {
+        auto positionals = [
+            ArgPositional(id, "", true, fromText("*"), &defaultArgPositionalAction),
+        ];
+        auto result = new ParseResult();
+        parseImpl(["POS1", "POS2"], counted(positionals), [], result);
+        assert(id in result && result[id] == ["POS1", "POS2"]);
+    }
+    {
+        auto positionals = [
+            ArgPositional(id, "", true, fromText("*"), &defaultArgPositionalAction),
+        ];
+        auto optionals = [
+            ArgOptional("opt", "", "-o", null, false, fromText("."), &defaultArgOptionalAction),
+        ];
+        auto result = new ParseResult();
+        parseImpl(["POS1", "POS2", "-o", "FOO", "POS3"], counted(positionals), counted(optionals), result);
+        assert(id in result && result[id] == ["POS1", "POS2", "POS3"]);
+    }
+    {
+        auto positionals = [
+            ArgPositional(id, "", true, fromText("+"), &defaultArgPositionalAction),
+        ];
+        auto optionals = [
+            ArgOptional("opt", "", "-o", null, false, fromText("."), &defaultArgOptionalAction),
+        ];
+        auto result = new ParseResult();
+        parseImpl(["POS1", "POS2", "-o", "FOO", "POS3"], counted(positionals), counted(optionals), result);
+        assert(id in result && result[id] == ["POS1", "POS2", "POS3"]);
+    }
+    {
+        auto positionals = [
+            ArgPositional(id, "", true, fromText(1), &defaultArgPositionalAction),
+        ];
+        auto optionals = [
+            ArgOptional("opt", "", "-o", null, false, fromText("."), &defaultArgOptionalAction),
+        ];
+        auto result = new ParseResult();
+        parseImpl(["POS1", "POS2", "-o", "FOO", "POS3"], counted(positionals), counted(optionals), result);
+        assert(id in result && result[id] == ["POS1"]);
+    }
+    {
+        auto positionals = [
+            ArgPositional(id, "", true, fromText(3), &defaultArgPositionalAction),
+        ];
+        auto optionals = [
+            ArgOptional("opt", "", "-o", null, false, fromText("."), &defaultArgOptionalAction),
+        ];
+        auto result = new ParseResult();
+        parseImpl(["POS1", "POS2", "-o", "FOO", "POS3"], counted(positionals), counted(optionals), result);
+        assert(id in result && result[id] == ["POS1", "POS2", "POS3"]);
+    }
+}
+
 @("Short options and long options can be parsed by parseImpl")
 unittest {
     auto optionals = [
