@@ -116,7 +116,7 @@ unittest {
     {
         const result = parser.parse([
             "prog", "POS", "123.45", "-o", "-p", "ABC", "--qqq", "123", "--qqq",
-            "456", "REST1", "REST2"
+            "456", "--", "REST1", "REST2"
         ]);
         assert(result !is null);
         assert("pos1" in result && result["pos1"].as!string == "POS");
@@ -321,30 +321,39 @@ private void parseImpl(
     if (args.length == 0) {
         return;
     }
-    if (args[0] == "--") {
+    auto argKind = detectArgKind(args[0]);
+    with (ArgKind) final switch (argKind) {
+    case seperator:
         result.trail ~= args[1 .. $];
-        return;
-    }
-    if (startsWith(args[0], "-")) {
-        int consumeArgs = 0;
+        break;
+    case optShort, optLong:
         foreach (ref optional; optionals) {
             if (matchOption(args[0], optional)) {
-                consumeArgs = optional.action(args, optional.id, optional.nArgs, result);
-                break;
+                if (optional.count == 0) {
+                    parseResultInitialize(optional.id, optional.nArgs, result);
+                }
+                optional.count++;
+                auto consumeArgs = optional.action(args, optional.id, optional.nArgs, result);
+                parseImpl(args[consumeArgs .. $], positionals, optionals, result);
+                return;
             }
         }
-        enforce!ArgumentException(consumeArgs > 0, text("Unknown option: ", args[0]));
-        parseImpl(args[consumeArgs .. $], positionals, optionals, result);
-    }
-    else {
+        enforce!ArgumentException(false, text("Unknown option: ", args[0]));
+        assert(0);
+    case someValue:
         if (positionals.length == 0) {
             result.trail ~= args[0];
             parseImpl(args[1 .. $], positionals, optionals, result);
         }
         else {
+            if (positionals[0].count == 0) {
+                parseResultInitialize(positionals[0].id, fromText("."), result);
+            }
             positionals[0].count++;
-            positionals[0].action(args, positionals[0].id, fromText("."), result);
-            parseImpl(args[1 .. $], positionals[1 .. $], optionals, result);
+            auto consumeArgs = positionals[0].action(args, positionals[0].id, fromText("."), result);
+            auto consumePositionals = argPositionalIsFilled(positionals[0].id, fromText("."), result) ? 1
+                : 0;
+            parseImpl(args[consumeArgs .. $], positionals[consumePositionals .. $], optionals, result);
         }
     }
 }
@@ -477,8 +486,7 @@ unittest {
     auto result = new ParseResult();
     parseImpl([
         "POS", "123.45", "-o", "-p", "ABC", "--qqq", "123", "--qqq", "456",
-        "REST1",
-        "REST2"
+        "--", "REST1", "REST2"
     ], counted(positionals), counted(optionals), result);
     assert("pos1" in result && result["pos1"].as!string == "POS");
     assert("pos2" in result && result["pos2"].as!double == 123.45);
@@ -550,22 +558,25 @@ private string[] parseImplForSubParser(
     if (args.length == 0) {
         return [];
     }
-    if (args[0] == "--") {
+    auto argKind = detectArgKind(args[0]);
+    with (ArgKind) final switch (argKind) {
+    case seperator:
         result.trail ~= args[1 .. $];
         return [];
-    }
-    if (startsWith(args[0], "-")) {
-        int consumeArgs = 0;
+    case optShort, optLong:
         foreach (ref optional; optionals) {
             if (matchOption(args[0], optional)) {
-                consumeArgs = optional.action(args, optional.id, optional.nArgs, result);
-                break;
+                if (optional.count == 0) {
+                    parseResultInitialize(optional.id, optional.nArgs, result);
+                }
+                optional.count++;
+                auto consumeArgs = optional.action(args, optional.id, optional.nArgs, result);
+                return parseImplForSubParser(args[consumeArgs .. $], optionals, result);
             }
         }
-        enforce!ArgumentException(consumeArgs > 0, text("Unknown option: ", args[0]));
-        return parseImplForSubParser(args[consumeArgs .. $], optionals, result);
-    }
-    else {
+        enforce!ArgumentException(false, text("Unknown option: ", args[0]));
+        assert(0);
+    case someValue:
         return args;
     }
 }
