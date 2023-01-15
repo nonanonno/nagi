@@ -1,4 +1,4 @@
 .dub
 /dub.selections.json
-/libnagi_*.a
+/libnagi*.a
 /nagi*-test-library
