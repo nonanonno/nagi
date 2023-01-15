@@ -12,6 +12,7 @@ import std.stdio : stdout, File;
 import nagi.argparse.types;
 import nagi.argparse.action;
 import nagi.argparse.help_format;
+import nagi.argparse.validation;
 
 class ArgumentParser {
     ParseResult parse(string[] argsWithCommandName) {
@@ -59,8 +60,13 @@ class ArgumentParser {
 
         parseImpl(argsWithCommandName[1 .. $], countedPositionals, countedOptionals, result);
 
-        countedPositionals.each!((p) { validate(p); });
-        countedOptionals.each!((o) { validate(o); });
+        void validate(T)(Counter!T arg) {
+            checkRequired(arg);
+            checkNARgs(arg, result);
+        }
+
+        countedPositionals.each!((a) { validate(a); });
+        countedOptionals.each!((a) { validate(a); });
 
         return result;
     }
@@ -72,11 +78,20 @@ class ArgumentParser {
         auto optionals = counted(helpOption_.id !is null ? (helpOption_ ~ optionals_) : optionals_);
         auto result = new ParseResult();
         auto argsForSubParser = parseImplForSubParser(argsWithCommandName[1 .. $], optionals, result);
+
         if (helpOption_.id && helpOption_.id in result) {
             messageSink_.writeln(generateHelpMessage(argsWithCommandName[0], this.helpText_, this.positionals_, this
                     .subParsers_, this.optionals_, this.helpOption_));
             return null;
         }
+
+        void validate(T)(Counter!T arg) {
+            checkRequired(arg);
+            checkNARgs(arg, result);
+        }
+
+        optionals.each!((a) { validate(a); });
+
         enforce!ArgumentException(argsForSubParser.length > 0, text("Need a command"));
         auto foundSubParsers = this.subParsers_.find!(p => p.name_ == argsForSubParser[0]);
 
@@ -664,49 +679,4 @@ unittest {
     assert(unparsed == ["sub", "--opt2", "OPT2"]);
     assert("opt1" in result);
     assert("opt2" !in result);
-}
-
-private void validate(in Counter!ArgPositional arg) {
-    import std.exception;
-
-    if (arg.isRequired) {
-        enforce!ArgumentException(arg.count == 1, text("Positional argument ", arg.id, " should be specified"));
-    }
-}
-
-private void validate(in Counter!ArgOptional arg) {
-    import std.exception;
-    import std.sumtype;
-
-    if (arg.isRequired) {
-        arg.nArgs.match!(
-            (NArgsOption n) {
-            with (NArgsOption) final switch (n) {
-            case one:
-                enforce!ArgumentException(arg.count == 1, text(
-                    "Optional argument ", arg.id,
-                    " should be specified once, but actually set ", arg.count, " times"));
-                break;
-            case zeroOrOne:
-                assert(0);
-            case moreThanEqualZero:
-                enforce!ArgumentException(arg.count > 0, text("Optional argument ", arg.id, " should be specified"));
-                break;
-            case moreThanEqualOne:
-                assert(0);
-            }
-        },
-            (uint n) {
-            switch (n) {
-            case 0:
-                enforce!ArgumentException(arg.count == 1, text(
-                    "Optional argument ", arg.id,
-                    " should be specified once, but actually set ", arg.count, " times"));
-                break;
-            default:
-                assert(0);
-            }
-        },
-        );
-    }
 }
