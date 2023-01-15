@@ -33,7 +33,7 @@ ArgumentParser parser = Command()
     .arg(Arg("flag")
             .optShort()
             .optLong()
-            .nArgs(NArgs.zero)
+            .nArgs(0)
             .help("A flag"))
     .arg(Arg("config")
             .optShort()
@@ -42,7 +42,7 @@ ArgumentParser parser = Command()
     .arg(Arg("numbers")
             .optShort('n')
             .optLong("num")
-            .nArgs(NArgs.any)
+            .nArgs("*")
             .help("Input numbers"))
     .build();
 
@@ -153,6 +153,52 @@ ret.subCommand.bind!((subCmd, subRet) {
     }
 });
 ```
+
+### Arguments specification
+
+Each Args have nArgs option to define how much values are consumed for the Arg. Here is descriptions for each nArgs.
+
+*Case for positional argument*
+
+|   nArgs   | Description                                                             |
+| :-------: | :---------------------------------------------------------------------- |
+|    `.`    | Typical option. Just consume one argument                               |
+|    `?`    | Zero or one argument is consumed. But in most case, this is same as '.' |
+|    `*`    | More than equal zero arguments are consumed and will be array           |
+|    `+`    | More than equal one arguments are consumed and will be array            |
+|    `0`    | Not allowed                                                             |
+| `n (> 0)` | n arguments are consumed and                                            |
+
+Please note that, if you use `*` or `+` for the positional argument, the latter positional argument will not be called because all of the values as the positional is consumed by it.
+
+*Case for optional argument*
+
+For the optional argument, there are two style to specify value for the option. 1. `--key=value` style and `--space split` style. For the key-value style, the value for the option is only a text after `=`. If the arguments are `--key=value FOO`, `FOO` is not associated to `--key` in every case. In the other hand, range of values associated to the option is depending on nArgs in the space style. If one option use multiple values, `--opt A B C --another D E` associates `[A B C]` to `--opt`. And `--opt A B C --another D E --opt F G` associates `[A B C F G]` to `--opt`.
+
+In optional argument, you can specify `null` value via the option. Which is `--opt=` (empty after `=` in key-value style) and `--opt --other ...`. In latter case, `--opt` will order `null` except `--opt` is a flag. If the value become null `"<id>" in result` will be null.
+
+|   nArgs   | Description                     | Behavior                                                                                                                   |
+| :-------: | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------- |
+|    `.`    | Typical option. One value       | Consumes one value. Specifying `null` is not allowed.                                                                      |
+|    `?`    | Zero or one value               | Consumes one value. Specifying `null` is allowed.                                                                          |
+|    `*`    | More than equal zero arguments. | All of values till another flag or separator found will be associated to the option. Specifying `null` will append 0 item. |
+|    `+`    | More than equal one arguments.  | All of values till another flag or separator found will be associated to the option. Specifying `null` will append 0 item. |
+|    `0`    | Make a flag                     | true if the option is specified.  Specifying `null` is not allowed.                                                        |
+| `n (> 0)` | n arguments are consumed.       | n arguments.                                                                                                               | n values will be consumed. Specifying `null` will append 0 item. Note that consuming values will stop at n items found. |
+
+
+
+By default, all of Args are non-required, and the parser does not raise any error if the Arg is not specified. If the Arg is required, the parser checks if the Arg is called at least once. In addition, the parser does the folloiwing validations according to nArgs.
+
+|   nArgs   | Validation                                                                            |
+| :-------: | :------------------------------------------------------------------------------------ |
+|    `.`    | N/A                                                                                   |
+|    `?`    | N/A                                                                                   |
+|    `*`    | N/A                                                                                   |
+|    `+`    | If the value is not `null`, check if the number of the contents is more than equal 1. |
+|    `0`    | N/A                                                                                   |
+| `n (> 0)` | If the value is not `null`, check if the number of the contets is `n`                 |
+
 
 
 ## nagi:console
