@@ -103,8 +103,8 @@ class ArgumentParser {
 unittest {
     auto parser = new ArgumentParser();
     parser.positionals_ = [
-        ArgPositional("pos1", "", true, &defaultArgPositionalAction),
-        ArgPositional("pos2", "", false, &defaultArgPositionalAction),
+        ArgPositional("pos1", "", true, fromText("."), &defaultArgPositionalAction),
+        ArgPositional("pos2", "", false, fromText("."), &defaultArgPositionalAction),
     ];
     parser.optionals_ = [
         ArgOptional("o", "", "-o", "--opt", false, fromText(0), &defaultArgOptionalAction),
@@ -141,8 +141,8 @@ unittest {
 unittest {
     auto parser = new ArgumentParser();
     parser.positionals_ = [
-        ArgPositional("pos1", "", true, &defaultArgPositionalAction),
-        ArgPositional("pos2", "", false, &defaultArgPositionalAction),
+        ArgPositional("pos1", "", true, fromText("."), &defaultArgPositionalAction),
+        ArgPositional("pos2", "", false, fromText("."), &defaultArgPositionalAction),
     ];
     parser.optionals_ = [
         ArgOptional("o", "", "-o", "--opt", false, fromText(0), &defaultArgOptionalAction),
@@ -236,8 +236,8 @@ unittest {
         ArgOptional("q", "", null, "--qqq", false, fromText("*"), &defaultArgOptionalAction),
     ];
     sub2sub.positionals_ = [
-        ArgPositional("pos1", "", true, &defaultArgPositionalAction),
-        ArgPositional("pos2", "", false, &defaultArgPositionalAction),
+        ArgPositional("pos1", "", true, fromText("."), &defaultArgPositionalAction),
+        ArgPositional("pos2", "", false, fromText("."), &defaultArgPositionalAction),
     ];
     sub2sub.helpOption_ = ArgOptional("help", "", "-h", "--help", false, fromText(0), &defaultArgOptionalAction);
 
@@ -347,11 +347,11 @@ private void parseImpl(
         }
         else {
             if (positionals[0].count == 0) {
-                parseResultInitialize(positionals[0].id, fromText("."), result);
+                parseResultInitialize(positionals[0].id, positionals[0].nArgs, result);
             }
             positionals[0].count++;
-            auto consumeArgs = positionals[0].action(args, positionals[0].id, fromText("."), result);
-            auto consumePositionals = argPositionalIsFilled(positionals[0].id, fromText("."), result) ? 1
+            auto consumeArgs = positionals[0].action(args, positionals[0].id, positionals[0].nArgs, result);
+            auto consumePositionals = argPositionalIsFilled(positionals[0].id, positionals[0].nArgs, result) ? 1
                 : 0;
             parseImpl(args[consumeArgs .. $], positionals[consumePositionals .. $], optionals, result);
         }
@@ -361,8 +361,8 @@ private void parseImpl(
 @("Positional argument can be parsed by parseImpl")
 unittest {
     auto positionals = [
-        ArgPositional("pos1", "", true, &defaultArgPositionalAction),
-        ArgPositional("pos2", "", false, &defaultArgPositionalAction),
+        ArgPositional("pos1", "", true, fromText("."), &defaultArgPositionalAction),
+        ArgPositional("pos2", "", false, fromText("."), &defaultArgPositionalAction),
     ];
     {
         auto result = new ParseResult();
@@ -474,8 +474,8 @@ unittest {
 @("Combination test for parseImpl")
 unittest {
     auto positionals = [
-        ArgPositional("pos1", "", true, &defaultArgPositionalAction),
-        ArgPositional("pos2", "", false, &defaultArgPositionalAction),
+        ArgPositional("pos1", "", true, fromText("."), &defaultArgPositionalAction),
+        ArgPositional("pos2", "", false, fromText("."), &defaultArgPositionalAction),
     ];
     auto optionals = [
         ArgOptional("o", "", "-o", "--opt", false, fromText(0), &defaultArgOptionalAction),
@@ -499,8 +499,8 @@ unittest {
 @("-- works for parseImpl")
 unittest {
     auto positionals = [
-        ArgPositional("pos1", "", true, &defaultArgPositionalAction),
-        ArgPositional("pos2", "", false, &defaultArgPositionalAction),
+        ArgPositional("pos1", "", true, fromText("."), &defaultArgPositionalAction),
+        ArgPositional("pos2", "", false, fromText("."), &defaultArgPositionalAction),
     ];
     auto optionals = [
         ArgOptional("o", "", "-o", "--opt", false, fromText(0), &defaultArgOptionalAction),

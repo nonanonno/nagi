@@ -162,6 +162,7 @@ struct ArgPositional {
     string id;
     string helpText;
     bool isRequired;
+    NArgs nArgs;
     ActionFunc action;
 }
 

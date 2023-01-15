@@ -130,6 +130,7 @@ struct Command {
                 a.name_,
                 a.helpText_,
                 a.isRequired_,
+                a.nArgs_,
                 &defaultArgPositionalAction,
         )).array();
     }
@@ -178,8 +179,8 @@ unittest {
     assert(parser.helpText_ == "Help for command.");
     assert(parser.shortDescription_ == "summary");
     assert(parser.positionals_ == [
-            ArgPositional("name", "Help for name.", true, &defaultArgPositionalAction),
-            ArgPositional("num", null, false, &defaultArgPositionalAction),
+            ArgPositional("name", "Help for name.", true, fromText("."), &defaultArgPositionalAction),
+            ArgPositional("num", null, false, fromText("."), &defaultArgPositionalAction),
         ], text(parser.positionals_));
 
     assert(parser.optionals_ == [
