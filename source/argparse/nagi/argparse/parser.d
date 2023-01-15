@@ -9,6 +9,9 @@ import std.string;
 import std.conv;
 import std.exception;
 import std.stdio : stdout, File;
+import nagi.argparse.types;
+import nagi.argparse.action;
+import nagi.argparse.help_format;
 
 class ArgumentParser {
     ParseResult parse(string[] argsWithCommandName) {
@@ -36,11 +39,12 @@ class ArgumentParser {
     private ParseResult parseAsEndPoint(string[] argsWithCommandName) {
         assert(argsWithCommandName.length > 0);
         assert(subParsers_.length == 0);
-        if (helpOption_.name) {
+        if (helpOption_.id) {
             if (canFind(argsWithCommandName, helpOption_.optShort) ||
                 canFind(argsWithCommandName, helpOption_.optLong)
                 ) {
-                messageSink_.writeln(this.generateHelpMessage(argsWithCommandName[0]));
+                messageSink_.writeln(generateHelpMessage(argsWithCommandName[0], this.helpText_, this.positionals_, this
+                        .subParsers_, this.optionals_, this.helpOption_));
                 return null;
             }
         }
@@ -51,11 +55,11 @@ class ArgumentParser {
         // set false for flags
         this.optionals_
             .filter!(o => o.nArgs == NArgs.zero)
-            .each!((o) { result[o.name] = false; });
+            .each!((o) { result[o.id] = false; });
         // set [] for array
         this.optionals_
             .filter!(o => o.nArgs == NArgs.any)
-            .each!((o) { result[o.name] = cast(string[])[]; });
+            .each!((o) { result[o.id] = cast(string[])[]; });
 
         parseImpl(argsWithCommandName[1 .. $], countedPositionals, countedOptionals, result);
 
@@ -69,11 +73,12 @@ class ArgumentParser {
         assert(argsWithCommandName.length > 0);
         assert(positionals_.length == 0);
         auto prog = argsWithCommandName[0];
-        auto optionals = counted(helpOption_.name !is null ? (helpOption_ ~ optionals_) : optionals_);
+        auto optionals = counted(helpOption_.id !is null ? (helpOption_ ~ optionals_) : optionals_);
         auto result = new ParseResult();
         auto argsForSubParser = parseImplForSubParser(argsWithCommandName[1 .. $], optionals, result);
-        if (helpOption_.name && helpOption_.name in result) {
-            messageSink_.writeln(this.generateHelpMessage(argsWithCommandName[0]));
+        if (helpOption_.id && helpOption_.id in result) {
+            messageSink_.writeln(generateHelpMessage(argsWithCommandName[0], this.helpText_, this.positionals_, this
+                    .subParsers_, this.optionals_, this.helpOption_));
             return null;
         }
         enforce!ArgumentException(argsForSubParser.length > 0, text("Need a command"));
@@ -92,58 +97,6 @@ class ArgumentParser {
 
         return result;
     }
-
-    string generateHelpMessage(string commandName) {
-        enum nameBoxWidth = 18;
-        enum helpBoxWidth = 60;
-        enum gap = 2;
-        string buffer;
-        buffer ~= text("usage: ", commandName, " ");
-        if (this.helpOption_.name !is null) {
-            auto helpFlag = this.helpOption_.optShort ? this.helpOption_.optShort
-                : this.helpOption_.optLong;
-            buffer ~= text("[", helpFlag, "] ");
-        }
-        if (this.optionals_.length > 0) {
-            buffer ~= "[OPTION] ";
-        }
-        if (this.subParsers_.length > 0) {
-            buffer ~= format("{%-(%s,%)} ... ", this.subParsers_.map!(p => p.name_));
-        }
-        if (this.positionals_.length > 0) {
-            buffer ~= format("%-(%s %) ", this.positionals_.map!(p => sampleText(p)));
-        }
-        buffer ~= "\n";
-        if (this.helpText_) {
-            buffer ~= "\n";
-            buffer ~= wrap(this.helpText_, nameBoxWidth + helpBoxWidth + gap);
-        }
-
-        void append(T)(T[] args, string title) {
-            if (args) {
-                buffer ~= text("\n",
-                    title, "\n",
-                    replicate("=", title.length), "\n"
-                );
-                args.each!((a) {
-                    buffer ~= generateHelpItem(a, nameBoxWidth, helpBoxWidth, gap);
-                });
-            }
-        }
-
-        append(this.subParsers_, "Sub commands");
-        append(this.positionals_.filter!(a => a.isRequired).array(), "Required positional argument");
-        append(this.positionals_.filter!(a => !a.isRequired).array(), "Non-required positional argument");
-        append(this.optionals_.filter!(a => a.isRequired).array(), "Required optional argument");
-        auto nonRequiredOptionals = this.optionals_.filter!(a => !a.isRequired).array();
-        if (this.helpOption_.name) {
-            nonRequiredOptionals ~= this.helpOption_;
-        }
-
-        append(nonRequiredOptionals, "Non-required optional argument");
-
-        return buffer;
-    }
 }
 
 @("ArgumentParser.parse for end point")
@@ -154,11 +107,11 @@ unittest {
         ArgPositional("pos2", "", false),
     ];
     parser.optionals_ = [
-        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
-        ArgOptional("p", "", "-p", null, false, NArgs.one),
-        ArgOptional("q", "", null, "--qqq", false, NArgs.any),
+        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero, &defaultAction),
+        ArgOptional("p", "", "-p", null, false, NArgs.one, &defaultAction),
+        ArgOptional("q", "", null, "--qqq", false, NArgs.any, &defaultAction),
     ];
-    parser.helpOption_ = ArgOptional("help", null, "-h", "--help", false, NArgs.zero);
+    parser.helpOption_ = ArgOptional("help", null, "-h", "--help", false, NArgs.zero, &defaultAction);
 
     {
         const result = parser.parse([
@@ -192,11 +145,11 @@ unittest {
         ArgPositional("pos2", "", false),
     ];
     parser.optionals_ = [
-        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
-        ArgOptional("p", "", "-p", null, false, NArgs.one),
-        ArgOptional("q", "", null, "--qqq", false, NArgs.any),
+        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero, &defaultAction),
+        ArgOptional("p", "", "-p", null, false, NArgs.one, &defaultAction),
+        ArgOptional("q", "", null, "--qqq", false, NArgs.any, &defaultAction),
     ];
-    parser.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+    parser.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero, &defaultAction);
 
     {
         auto tmp = File.tmpfile();
@@ -259,34 +212,34 @@ unittest {
 
     parser.subParsers_ = [sub1, sub2];
     parser.optionals_ = [
-        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
-        ArgOptional("p", "", "-p", null, false, NArgs.one),
-        ArgOptional("q", "", null, "--qqq", false, NArgs.any),
+        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero, &defaultAction),
+        ArgOptional("p", "", "-p", null, false, NArgs.one, &defaultAction),
+        ArgOptional("q", "", null, "--qqq", false, NArgs.any, &defaultAction),
     ];
-    parser.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+    parser.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero, &defaultAction);
 
     sub1.name_ = "sub1";
     sub1.optionals_ = [
-        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
+        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero, &defaultAction),
     ];
-    sub1.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+    sub1.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero, &defaultAction);
 
     sub2.name_ = "sub2";
     sub2.optionals_ = [
-        ArgOptional("p", "", "-p", null, false, NArgs.one),
+        ArgOptional("p", "", "-p", null, false, NArgs.one, &defaultAction),
     ];
-    sub2.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+    sub2.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero, &defaultAction);
     sub2.subParsers_ = [sub2sub];
 
     sub2sub.name_ = "sub";
     sub2sub.optionals_ = [
-        ArgOptional("q", "", null, "--qqq", false, NArgs.any),
+        ArgOptional("q", "", null, "--qqq", false, NArgs.any, &defaultAction),
     ];
     sub2sub.positionals_ = [
         ArgPositional("pos1", "", true),
         ArgPositional("pos2", "", false),
     ];
-    sub2sub.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero);
+    sub2sub.helpOption_ = ArgOptional("help", "", "-h", "--help", false, NArgs.zero, &defaultAction);
 
     void setSink(File f) {
         [parser, sub1, sub2, sub2sub].each!((p) { p.messageSink_ = f; });
@@ -359,272 +312,6 @@ unittest {
     }
 }
 
-@("help message for end point")
-unittest {
-    auto positionals = [
-        ArgPositional("pos1", "Help message for pos1", true),
-        ArgPositional("pos2", "Help message for pos2", false),
-    ];
-    auto optionals = [
-        ArgOptional("o", "Help message for option 1", "-o", "--opt", false, NArgs.zero),
-        ArgOptional("p", "Help message for option 2", "-p", null, false, NArgs.one),
-        ArgOptional("q", "Help message for option 3", null, "--qqq", false, NArgs.any),
-    ];
-    auto helpArg = ArgOptional("help", "Display this message", "-h", "--help", false, NArgs.zero);
-    auto helpText = text(
-        "This is a sample help message for testing. Since the message count is over 80, t",
-        "he message will be wrapped.");
-
-    {
-        auto expected = text("usage: prog [-h] [OPTION] <POS1> [POS2] \n",
-            "\n",
-            "This is a sample help message for testing. Since the message count is over 80,\n",
-            "the message will be wrapped.\n",
-            "\n",
-            "Required positional argument\n",
-            "============================\n",
-            "  <POS1>            Help message for pos1\n",
-            "\n",
-            "Non-required positional argument\n",
-            "================================\n",
-            "  [POS2]            Help message for pos2\n",
-            "\n",
-            "Non-required optional argument\n",
-            "==============================\n",
-            "  -o, --opt         Help message for option 1\n",
-            "  -p   <P>          Help message for option 2\n",
-            "      --qqq <Q...>  Help message for option 3\n",
-            "  -h, --help        Display this message\n",
-        );
-
-        auto parser = new ArgumentParser();
-        parser.positionals_ = positionals;
-        parser.optionals_ = optionals;
-        parser.helpOption_ = helpArg;
-        parser.helpText_ = helpText;
-
-        assert(parser.generateHelpMessage("prog") == expected);
-    }
-    {
-        auto expected = text("usage: prog [-h] [OPTION] \n",
-            "\n",
-            "Non-required optional argument\n",
-            "==============================\n",
-            "  -o, --opt         Help message for option 1\n",
-            "  -p   <P>          Help message for option 2\n",
-            "      --qqq <Q...>  Help message for option 3\n",
-            "  -h, --help        Display this message\n",
-        );
-
-        auto parser = new ArgumentParser();
-        parser.optionals_ = optionals;
-        parser.helpOption_ = helpArg;
-
-        assert(parser.generateHelpMessage("prog") == expected);
-    }
-    {
-        auto expected = text("usage: prog [-h] <POS1> [POS2] \n",
-            "\n",
-            "Required positional argument\n",
-            "============================\n",
-            "  <POS1>            Help message for pos1\n",
-            "\n",
-            "Non-required positional argument\n",
-            "================================\n",
-            "  [POS2]            Help message for pos2\n",
-            "\n",
-            "Non-required optional argument\n",
-            "==============================\n",
-            "  -h, --help        Display this message\n",
-        );
-
-        auto parser = new ArgumentParser();
-        parser.positionals_ = positionals;
-        parser.helpOption_ = helpArg;
-
-        assert(parser.generateHelpMessage("prog") == expected);
-    }
-    {
-        // Just for behavior check. In normal case, there is no way to show help message without helpOption.
-        auto expected = text("usage: prog [OPTION] <POS1> [POS2] \n",
-            "\n",
-            "Required positional argument\n",
-            "============================\n",
-            "  <POS1>            Help message for pos1\n",
-            "\n",
-            "Non-required positional argument\n",
-            "================================\n",
-            "  [POS2]            Help message for pos2\n",
-            "\n",
-            "Non-required optional argument\n",
-            "==============================\n",
-            "  -o, --opt         Help message for option 1\n",
-            "  -p   <P>          Help message for option 2\n",
-            "      --qqq <Q...>  Help message for option 3\n",
-        );
-
-        auto parser = new ArgumentParser();
-        parser.positionals_ = positionals;
-        parser.optionals_ = optionals;
-
-        assert(parser.generateHelpMessage("prog") == expected);
-    }
-
-}
-
-class ArgumentException : Exception {
-    import std.exception : basicExceptionCtors;
-
-    mixin basicExceptionCtors;
-}
-
-struct ParseValue {
-    Variant data;
-    alias data this;
-
-    this(T)(T value) {
-        data = value;
-    }
-
-    auto opAssign(T)(T value) {
-        data = value;
-        return this;
-    }
-
-    T as(T)() const {
-        import std.traits;
-        import std.conv : to, text;
-        import std.exception;
-
-        static if (isNumeric!T || isBoolean!T) {
-            if (data.convertsTo!real) {
-                return to!T(data.get!real);
-            }
-            else if (data.convertsTo!(const(char)[])) {
-                return to!T(data.get!(const(char)[]));
-            }
-            else if (data.convertsTo!(immutable(char)[])) {
-                return to!T(data.get!(immutable(char)[]));
-            }
-            else {
-                enforce(false, text("Type ", data.type(), " does not convert to ", typeid(T)));
-                assert(0);
-            }
-        }
-        else static if (is(T : Object)) {
-            return to!(T)(data.get!(Object));
-        }
-        else static if (isSomeString!(T)) {
-            return to!(T)((cast(Variant*)&data).toString());
-        }
-        else static if (isArray!(T)) {
-            if (data.convertsTo!(T)) {
-                return to!T(data.get!(T));
-            }
-            else if (data.convertsTo!(const(char)[][])) {
-                return to!T(data.get!(const(char)[][]));
-            }
-            else if (data.convertsTo!(immutable(char)[][])) {
-                return to!T(data.get!(immutable(char)[][]));
-            }
-            else {
-                enforce(false, text("Type ", data.type(), " does not convert to ", typeid(T)));
-                assert(0);
-            }
-        }
-        else {
-            static assert(false, text("unsupported type for as: ", typeid(T)));
-        }
-    }
-
-    string toString() const @trusted {
-        return (cast(Variant*)&data).toString();
-    }
-}
-
-@("ParseValue can hold many types of value and `as` function can get it with expected type")
-unittest {
-    assert(ParseValue("abc").as!string == "abc");
-    assert(ParseValue("123").as!int == 123);
-    assert(ParseValue(123).as!int == 123);
-    assert(ParseValue(123).as!string == "123");
-
-    assert(ParseValue("123.45").as!float == 123.45f);
-    assert(ParseValue(123.45).as!double == 123.45);
-    assert(ParseValue("true").as!bool == true);
-    assert(ParseValue(true).as!bool == true);
-    assert(ParseValue("false").as!bool == false);
-
-    assert(ParseValue(["abc", "def"]).as!(string[]) == ["abc", "def"]);
-    assert(ParseValue(["123", "456"]).as!(int[]) == [123, 456]);
-    assert(ParseValue(["123.45", "456.78"]).as!(double[]) == [
-            123.45, 456.78
-        ]);
-    assert(ParseValue([123, 456]).as!(int[]) == [123, 456]);
-    assert(ParseValue([123.45, 456.78]).as!(double[]) == [123.45, 456.78]);
-}
-
-@("Invalid convertion raises an exception")
-unittest {
-    import std.exception;
-
-    assertThrown(ParseValue("abc").as!int);
-    assertThrown(ParseValue(["abc", "def"]).as!(int[]));
-    assertThrown(ParseValue([123, 456]).as!(double[]));
-    assertThrown(ParseValue([123, 456]).as!(string[]));
-}
-
-class ParseResult {
-    ParseValue[string] args;
-    Tuple!(string, "name", ParseResult, "result") subCommand;
-    string[] trail;
-
-    alias args this;
-
-    override string toString() const @safe {
-        return text("ParseResult(",
-            "args=", args, ", ",
-            "subCommand=", subCommand, ", ",
-            "trail=", trail, ")"
-        );
-    }
-}
-
-enum NArgs {
-    zero,
-    one,
-    any,
-}
-
-package struct ArgPositional {
-    string name;
-    string helpText;
-    bool isRequired;
-}
-
-package struct ArgOptional {
-    string name;
-    string helpText;
-    string optShort; // with -
-    string optLong; // with --
-    bool isRequired;
-    NArgs nArgs;
-}
-
-private struct Counter(T) {
-    this(T data) {
-        this.data = data;
-    }
-
-    T data;
-    int count = 0;
-    alias data this;
-}
-
-private Counter!(T)[] counted(T)(T[] t) {
-    return t.map!(u => Counter!T(u)).array();
-}
-
 private void parseImpl(
     string[] args,
     Counter!(ArgPositional)[] positionals,
@@ -639,8 +326,14 @@ private void parseImpl(
         return;
     }
     if (startsWith(args[0], "-")) {
-        auto consumeArgs = parseArgOptional(args, optionals, result);
-        assert(consumeArgs > 0);
+        int consumeArgs = 0;
+        foreach (ref optional; optionals) {
+            consumeArgs = optional.action(args, optional, result);
+            if (consumeArgs > 0) {
+                break;
+            }
+        }
+        enforce!ArgumentException(consumeArgs > 0, text("Unknown option: ", args[0]));
         parseImpl(args[consumeArgs .. $], positionals, optionals, result);
     }
     else {
@@ -649,86 +342,11 @@ private void parseImpl(
             parseImpl(args[1 .. $], positionals, optionals, result);
         }
         else {
-            result[positionals[0].name] = args[0];
+            result[positionals[0].id] = args[0];
             positionals[0].count++;
             parseImpl(args[1 .. $], positionals[1 .. $], optionals, result);
         }
     }
-}
-
-private int parseArgOptional(in string[] args, ref Counter!(ArgOptional)[] optionals, ParseResult result) {
-    auto opt = parseOption(args[0]);
-    auto found = optionals.find!(o => o.optShort == opt[0] || o.optLong == opt[0]);
-    if (found.length == 0) {
-        throw new ArgumentException(text("Unknown option ", args[0], " found"));
-    }
-    found[0].count++;
-
-    int consumeArgs = 0;
-    auto id = found[0].name;
-
-    with (NArgs) final switch (found[0].nArgs) {
-    case zero:
-        consumeArgs = 1;
-        if (opt.length == 1) {
-            result.args[id] = true;
-        }
-        else {
-            result.args[id] = opt[1].to!bool;
-        }
-        break;
-    case one:
-        if (opt.length == 1) {
-            if (args.length < 2) {
-                throw new ArgumentException(text("Need one following argument for ", args[0]));
-            }
-            result.args[id] = args[1];
-            consumeArgs = 2;
-        }
-        else {
-            result.args[id] = opt[1];
-            consumeArgs = 1;
-        }
-        break;
-    case any:
-        result.args.require(id, ParseValue(cast(string[])[]));
-        if (opt.length == 1) {
-            if (args.length < 2) {
-                throw new ArgumentException(text("Need one following argument for ", args[0]));
-            }
-            result.args[id] ~= args[1];
-            consumeArgs = 2;
-        }
-        else {
-            result.args[id] ~= opt[1];
-            consumeArgs = 1;
-        }
-        break;
-    }
-    return consumeArgs;
-}
-
-private string[] parseOption(string arg) {
-    import std.regex;
-
-    auto equalPattern = regex(r"(--?[\w-_]+)=(.+)");
-    if (auto m = matchFirst(arg, equalPattern)) {
-        return [m[1], m[2]];
-    }
-    else {
-        return [arg];
-    }
-}
-
-unittest {
-    assert(parseOption("--opt") == ["--opt"]);
-    assert(parseOption("-o") == ["-o"]);
-    assert(parseOption("--opt=OPT") == ["--opt", "OPT"]);
-    assert(parseOption("-o=OPT") == ["-o", "OPT"]);
-    assert(parseOption("--opt=OPT=FOO") == ["--opt", "OPT=FOO"]);
-    assert(parseOption("-o=OPT=FOO") == ["-o", "OPT=FOO"]);
-    assert(parseOption("--opt-opt=OPT=FOO") == ["--opt-opt", "OPT=FOO"]);
-    assert(parseOption("--opt_opt=OPT=FOO") == ["--opt_opt", "OPT=FOO"]);
 }
 
 @("Positional argument can be parsed by parseImpl")
@@ -761,9 +379,9 @@ unittest {
 @("Short options and long options can be parsed by parseImpl")
 unittest {
     auto optionals = [
-        ArgOptional("opt1", "", "-o", "--opt1", false, NArgs.one),
-        ArgOptional("opt2", "", null, "--opt2", false, NArgs.one),
-        ArgOptional("opt3", "", "-p", null, false, NArgs.one),
+        ArgOptional("opt1", "", "-o", "--opt1", false, NArgs.one, &defaultAction),
+        ArgOptional("opt2", "", null, "--opt2", false, NArgs.one, &defaultAction),
+        ArgOptional("opt3", "", "-p", null, false, NArgs.one, &defaultAction),
     ];
     {
         auto result = new ParseResult();
@@ -804,9 +422,9 @@ unittest {
 @("nArgs can be parsed by parseImpl")
 unittest {
     auto optionals = [
-        ArgOptional("o", "", "-o", null, false, NArgs.zero),
-        ArgOptional("p", "", "-p", null, false, NArgs.one),
-        ArgOptional("q", "", "-q", null, false, NArgs.any),
+        ArgOptional("o", "", "-o", null, false, NArgs.zero, &defaultAction),
+        ArgOptional("p", "", "-p", null, false, NArgs.one, &defaultAction),
+        ArgOptional("q", "", "-q", null, false, NArgs.any, &defaultAction),
     ];
     {
         auto result = new ParseResult();
@@ -851,9 +469,9 @@ unittest {
         ArgPositional("pos2", "", false),
     ];
     auto optionals = [
-        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
-        ArgOptional("p", "", "-p", null, false, NArgs.one),
-        ArgOptional("q", "", null, "--qqq", false, NArgs.any),
+        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero, &defaultAction),
+        ArgOptional("p", "", "-p", null, false, NArgs.one, &defaultAction),
+        ArgOptional("q", "", null, "--qqq", false, NArgs.any, &defaultAction),
     ];
 
     auto result = new ParseResult();
@@ -877,9 +495,9 @@ unittest {
         ArgPositional("pos2", "", false),
     ];
     auto optionals = [
-        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
-        ArgOptional("p", "", "-p", null, false, NArgs.one),
-        ArgOptional("q", "", null, "--qqq", false, NArgs.any),
+        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero, &defaultAction),
+        ArgOptional("p", "", "-p", null, false, NArgs.one, &defaultAction),
+        ArgOptional("q", "", null, "--qqq", false, NArgs.any, &defaultAction),
     ];
 
     auto result = new ParseResult();
@@ -898,9 +516,9 @@ unittest {
 @("--option=OPT pattern")
 unittest {
     auto optionals = [
-        ArgOptional("opt1", "", "-o", "--opt1", false, NArgs.zero),
-        ArgOptional("opt2", "", "-p", "--opt2", false, NArgs.one),
-        ArgOptional("opt3", "", "-q", "--opt3", false, NArgs.any),
+        ArgOptional("opt1", "", "-o", "--opt1", false, NArgs.zero, &defaultAction),
+        ArgOptional("opt2", "", "-p", "--opt2", false, NArgs.one, &defaultAction),
+        ArgOptional("opt3", "", "-q", "--opt3", false, NArgs.any, &defaultAction),
     ];
     {
         auto result = new ParseResult();
@@ -937,8 +555,14 @@ private string[] parseImplForSubParser(
         return [];
     }
     if (startsWith(args[0], "-")) {
-        auto consumeArgs = parseArgOptional(args, optionals, result);
-        assert(consumeArgs > 0);
+        int consumeArgs = 0;
+        foreach (ref optional; optionals) {
+            consumeArgs = optional.action(args, optional, result);
+            if (consumeArgs > 0) {
+                break;
+            }
+        }
+        enforce!ArgumentException(consumeArgs > 0, text("Unknown option: ", args[0]));
         return parseImplForSubParser(args[consumeArgs .. $], optionals, result);
     }
     else {
@@ -949,9 +573,9 @@ private string[] parseImplForSubParser(
 @("parseImplForSubParser parses options till non-optional argument is found")
 unittest {
     auto optionals = [
-        ArgOptional("opt1", "", "-o", "--opt1", false, NArgs.one),
-        ArgOptional("opt2", "", null, "--opt2", false, NArgs.one),
-        ArgOptional("opt3", "", "-p", null, false, NArgs.one),
+        ArgOptional("opt1", "", "-o", "--opt1", false, NArgs.one, &defaultAction),
+        ArgOptional("opt2", "", null, "--opt2", false, NArgs.one, &defaultAction),
+        ArgOptional("opt3", "", "-p", null, false, NArgs.one, &defaultAction),
     ];
     auto result = new ParseResult();
     auto unparsed = parseImplForSubParser([
@@ -966,7 +590,7 @@ private void validate(in Counter!ArgPositional arg) {
     import std.exception;
 
     if (arg.isRequired) {
-        enforce!ArgumentException(arg.count == 1, text("Positional argument ", arg.name, " should be specified"));
+        enforce!ArgumentException(arg.count == 1, text("Positional argument ", arg.id, " should be specified"));
     }
 }
 
@@ -977,111 +601,12 @@ private void validate(in Counter!ArgOptional arg) {
         with (NArgs) final switch (arg.nArgs) {
         case zero, one:
             enforce!ArgumentException(arg.count == 1, text(
-                    "Optional argument ", arg.name,
+                    "Optional argument ", arg.id,
                     " should be specified once, but actually set ", arg.count, " times"));
             break;
         case any:
-            enforce!ArgumentException(arg.count > 0, text("Optional argument ", arg.name, " should be specified"));
+            enforce!ArgumentException(arg.count > 0, text("Optional argument ", arg.id, " should be specified"));
             break;
         }
     }
-}
-
-private string displayName(in ArgOptional arg) {
-    auto state = (arg.optShort ? 0b10 : 0b00) | (arg.optLong ? 0b01 : 0b00);
-    switch (state) {
-    case 0b11:
-        return text(arg.optShort, ", ", arg.optLong);
-    case 0b10:
-        return text(arg.optShort, "  ");
-    case 0b01:
-        return text("    ", arg.optLong);
-    default:
-        assert(false);
-    }
-}
-
-private string sampleText(in ArgPositional arg) {
-    if (arg.isRequired) {
-        return text("<", arg.name.toUpper(), ">");
-    }
-    else {
-        return text("[", arg.name.toUpper(), "]");
-    }
-}
-
-private string sampleText(in ArgOptional arg) {
-    with (NArgs) final switch (arg.nArgs) {
-    case zero:
-        return displayName(arg);
-    case one:
-        return text(displayName(arg), " <", arg.name.toUpper(), ">");
-    case any:
-        return text(displayName(arg), " <", arg.name.toUpper(), "...>");
-    }
-}
-
-private string sampleText(in ArgumentParser arg) {
-    return arg.name_;
-}
-
-private string descriptionText(in ArgPositional arg) {
-    return arg.helpText;
-}
-
-private string descriptionText(in ArgOptional arg) {
-    return arg.helpText;
-}
-
-private string descriptionText(in ArgumentParser arg) {
-    return arg.shortDescription_;
-}
-
-private string generateHelpItem(T)(in T arg, int nameBoxWidth, int helpBoxWidth, int gapWidth) {
-    auto name = sampleText(arg);
-    auto helpText = descriptionText(arg);
-    auto indent = replicate(" ", gapWidth + nameBoxWidth);
-    auto first = leftJustify(text("  ", name), nameBoxWidth);
-    // Add 2 for wrap function. Without it, wrap function wraps text even if the word width equals to width.
-    if (first.length <= nameBoxWidth) {
-        return wrap(helpText, nameBoxWidth + gapWidth + helpBoxWidth + 2, first ~ replicate(" ", gapWidth), indent);
-    }
-    else {
-        return text(first, "\n", wrap(helpText, nameBoxWidth + gapWidth + helpBoxWidth + 2, indent, indent));
-    }
-}
-
-@("Test for generateHelpItem")
-unittest {
-    assert(generateHelpItem(ArgPositional("name", "help"), 10, 60, 2)
-            == "  [NAME]    help\n");
-    assert(generateHelpItem(ArgPositional("12", "1234567890"), 6, 10, 2)
-            == "  [12]  1234567890\n");
-    assert(generateHelpItem(ArgPositional("12", "1234567890 1234567890"), 6, 10, 2)
-            == "  [12]  1234567890\n        1234567890\n");
-    assert(generateHelpItem(ArgPositional("123", "1234567890 1234567890"), 6, 10, 2)
-            == "  [123]\n        1234567890\n        1234567890\n");
-    assert(generateHelpItem(
-            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, NArgs.zero),
-            24, 10, 2) == text(
-            "  -o, --option            1234567890\n",
-            "                          1234567890\n",
-    ));
-    assert(generateHelpItem(
-            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, NArgs.one),
-            24, 10, 2) == text(
-            "  -o, --option <OPTION>   1234567890\n",
-            "                          1234567890\n",
-    ));
-    assert(generateHelpItem(
-            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, NArgs.any),
-            24, 10, 2) == text(
-            "  -o, --option <OPTION...>\n",
-            "                          1234567890\n",
-            "                          1234567890\n",
-    ));
-    auto parser = new ArgumentParser();
-    parser.name_ = "command";
-    parser.shortDescription_ = "short description";
-    assert(generateHelpItem(parser, 10, 60, 2) == "  command   short description\n");
 }

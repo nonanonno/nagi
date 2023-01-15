@@ -1,6 +1,8 @@
 module nagi.argparse.builder;
 
 import nagi.argparse.parser;
+import nagi.argparse.types;
+import nagi.argparse.action;
 
 import std.algorithm;
 import std.array;
@@ -106,7 +108,7 @@ struct Command {
 
         if (this.generateHelpOption_) {
             parser.helpOption_ = ArgOptional(
-                "help", "Display this message.", "-h", "--help", false, NArgs.zero);
+                "help", "Display this message.", "-h", "--help", false, NArgs.zero, &defaultAction);
         }
 
         parser.subParsers_ = this.subParsers_;
@@ -139,6 +141,7 @@ struct Command {
                 a.genLong(),
                 a.isRequired_,
                 a.nArgs_,
+                &defaultAction,
         )).array();
     }
 }
@@ -178,13 +181,13 @@ unittest {
         ], text(parser.positionals_));
 
     assert(parser.optionals_ == [
-            ArgOptional("config", "Help for config.", "-c", "--config", true, NArgs.one),
-            ArgOptional("flag", "Help for flag.", "-f", null, false, NArgs.zero),
-            ArgOptional("environment", "Help for environment.", null, "--env", false, NArgs.any),
-            ArgOptional("foo", null, null, "--foo", false, NArgs.one),
+            ArgOptional("config", "Help for config.", "-c", "--config", true, NArgs.one, &defaultAction),
+            ArgOptional("flag", "Help for flag.", "-f", null, false, NArgs.zero, &defaultAction),
+            ArgOptional("environment", "Help for environment.", null, "--env", false, NArgs.any, &defaultAction),
+            ArgOptional("foo", null, null, "--foo", false, NArgs.one, &defaultAction),
         ], text(parser.optionals_));
     assert(parser.helpOption_ == ArgOptional("help", "Display this message.", "-h", "--help", false, NArgs
-            .zero));
+            .zero, &defaultAction));
 
     assert(parser.subParsers_.length == 0);
 }
@@ -209,9 +212,9 @@ unittest {
 
     assert(parser.subParsers_[0].name_ == "sub1");
     assert(parser.subParsers_[0].positionals_.length == 1);
-    assert(parser.subParsers_[0].positionals_[0].name == "foo");
+    assert(parser.subParsers_[0].positionals_[0].id == "foo");
 
     assert(parser.subParsers_[1].name_ == "sub2");
     assert(parser.subParsers_[1].positionals_.length == 1);
-    assert(parser.subParsers_[1].positionals_[0].name == "bar");
+    assert(parser.subParsers_[1].positionals_[0].id == "bar");
 }
