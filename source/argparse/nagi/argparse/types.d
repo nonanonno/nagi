@@ -126,6 +126,7 @@ struct ArgPositional {
     string id;
     string helpText;
     bool isRequired;
+    ActionFunc action;
 }
 
 struct ArgOptional {
@@ -155,7 +156,7 @@ Counter!(T)[] counted(T)(T[] t) {
     return t.map!(u => Counter!T(u)).array();
 }
 
-alias ActionFunc = int function(in string[] args, ref Counter!ArgOptional optional, ParseResult result);
+alias ActionFunc = int function(string[] args, string id, NArgs nargs, ParseResult result);
 
 class ArgumentException : Exception {
     import std.exception : basicExceptionCtors;

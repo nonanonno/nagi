@@ -108,7 +108,7 @@ struct Command {
 
         if (this.generateHelpOption_) {
             parser.helpOption_ = ArgOptional(
-                "help", "Display this message.", "-h", "--help", false, NArgs.zero, &defaultAction);
+                "help", "Display this message.", "-h", "--help", false, NArgs.zero, &defaultArgOptionalAction);
         }
 
         parser.subParsers_ = this.subParsers_;
@@ -129,6 +129,7 @@ struct Command {
                 a.name_,
                 a.helpText_,
                 a.isRequired_,
+                &defaultArgPositionalAction,
         )).array();
     }
 
@@ -141,7 +142,7 @@ struct Command {
                 a.genLong(),
                 a.isRequired_,
                 a.nArgs_,
-                &defaultAction,
+                &defaultArgOptionalAction,
         )).array();
     }
 }
@@ -176,18 +177,19 @@ unittest {
     assert(parser.helpText_ == "Help for command.");
     assert(parser.shortDescription_ == "summary");
     assert(parser.positionals_ == [
-            ArgPositional("name", "Help for name.", true),
-            ArgPositional("num", null, false),
+            ArgPositional("name", "Help for name.", true, &defaultArgPositionalAction),
+            ArgPositional("num", null, false, &defaultArgPositionalAction),
         ], text(parser.positionals_));
 
     assert(parser.optionals_ == [
-            ArgOptional("config", "Help for config.", "-c", "--config", true, NArgs.one, &defaultAction),
-            ArgOptional("flag", "Help for flag.", "-f", null, false, NArgs.zero, &defaultAction),
-            ArgOptional("environment", "Help for environment.", null, "--env", false, NArgs.any, &defaultAction),
-            ArgOptional("foo", null, null, "--foo", false, NArgs.one, &defaultAction),
+            ArgOptional("config", "Help for config.", "-c", "--config", true, NArgs.one, &defaultArgOptionalAction),
+            ArgOptional("flag", "Help for flag.", "-f", null, false, NArgs.zero, &defaultArgOptionalAction),
+            ArgOptional("environment", "Help for environment.", null, "--env", false, NArgs.any,
+                &defaultArgOptionalAction),
+            ArgOptional("foo", null, null, "--foo", false, NArgs.one, &defaultArgOptionalAction),
         ], text(parser.optionals_));
     assert(parser.helpOption_ == ArgOptional("help", "Display this message.", "-h", "--help", false, NArgs
-            .zero, &defaultAction));
+            .zero, &defaultArgOptionalAction));
 
     assert(parser.subParsers_.length == 0);
 }
