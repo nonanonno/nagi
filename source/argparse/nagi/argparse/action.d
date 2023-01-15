@@ -3,55 +3,74 @@ module nagi.argparse.action;
 import nagi.argparse.types;
 import std.conv;
 import std.exception;
+import std.sumtype;
 
 int defaultArgPositionalAction(string[] args, string id, NArgs nargs, ParseResult result) {
     assert(args.length > 0);
-    with (NArgs) final switch (nargs) {
-    case zero:
-        assert(0, "Positional argument needs at least one argument.");
-    case one:
-        result.args[id] = args[0];
-        return 1;
-    case any:
-        assert(0, "Any is not supported for positional argument.");
-    }
+    return nargs.match!(
+        (NArgsOption n) {
+        with (NArgsOption) final switch (n) {
+        case one:
+            result.args[id] = args[0];
+            return 1;
+        case moreThanEqualZero:
+            enforce!ArgumentException(false, "Any is not supported for positional argument.");
+            assert(0);
+        case zeroOrOne, moreThanEqualOne:
+            assert(0);
+        }
+    },
+        (_) => assert(0),
+    );
 }
 
 int defaultArgOptionalAction(string[] args, string id, NArgs nargs, ParseResult result) {
     assert(args.length > 0);
     auto opt = parseOption(args[0]);
 
-    with (NArgs) final switch (nargs) {
-    case zero:
-        if (opt.length == 1) {
-            result.args[id] = true;
+    return nargs.match!(
+        (NArgsOption n) {
+        with (NArgsOption) final switch (n) {
+        case one:
+            if (opt.length == 1) {
+                enforce!ArgumentException(args.length > 1, text("Need one following argument for", opt[0]));
+                result.args[id] = args[1];
+                return 2;
+            }
+            else {
+                result.args[id] = opt[1];
+                return 1;
+            }
+        case moreThanEqualZero:
+            result.args.require(id, ArgValue(cast(string[])[]));
+            if (opt.length == 1) {
+                enforce!ArgumentException(args.length > 1, text("Need one following argument for ", opt[0]));
+                result.args[id] ~= args[1];
+                return 2;
+            }
+            else {
+                result.args[id] ~= opt[1];
+                return 1;
+            }
+        case zeroOrOne, moreThanEqualOne:
+            assert(0);
         }
-        else {
-            result.args[id] = opt[1].to!bool;
-        }
-        return 1;
-    case one:
-        if (opt.length == 1) {
-            enforce!ArgumentException(args.length > 1, text("Need one following argument for ", opt[0]));
-            result.args[id] = args[1];
-            return 2;
-        }
-        else {
-            result.args[id] = opt[1];
+    },
+        (uint n) {
+        switch (n) {
+        case 0:
+            if (opt.length == 1) {
+                result.args[id] = true;
+            }
+            else {
+                result.args[id] = opt[1].to!bool;
+            }
             return 1;
+        default:
+            assert(0);
         }
-    case any:
-        result.args.require(id, ArgValue(cast(string[])[]));
-        if (opt.length == 1) {
-            enforce!ArgumentException(args.length > 1, text("Need one following argument for ", opt[0]));
-            result.args[id] ~= args[1];
-            return 2;
-        }
-        else {
-            result.args[id] ~= opt[1];
-            return 1;
-        }
-    }
+    },
+    );
 }
 
 bool matchOption(string arg, ArgOptional optional) {

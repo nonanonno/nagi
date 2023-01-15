@@ -4,6 +4,7 @@ import std.conv;
 import std.string;
 import std.array;
 import std.algorithm;
+import std.sumtype;
 
 import nagi.argparse.types;
 import nagi.argparse.parser;
@@ -33,19 +34,19 @@ unittest {
     assert(generateHelpItem(ArgPositional("123", "1234567890 1234567890"), 6, 10, 2)
             == "  [123]\n        1234567890\n        1234567890\n");
     assert(generateHelpItem(
-            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, NArgs.zero),
+            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, fromText(0)),
             24, 10, 2) == text(
             "  -o, --option            1234567890\n",
             "                          1234567890\n",
     ));
     assert(generateHelpItem(
-            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, NArgs.one),
+            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, fromText(".")),
             24, 10, 2) == text(
             "  -o, --option <OPTION>   1234567890\n",
             "                          1234567890\n",
     ));
     assert(generateHelpItem(
-            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, NArgs.any),
+            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, fromText("*")),
             24, 10, 2) == text(
             "  -o, --option <OPTION...>\n",
             "                          1234567890\n",
@@ -123,11 +124,11 @@ unittest {
         ArgPositional("pos2", "Help message for pos2", false),
     ];
     auto optionals = [
-        ArgOptional("o", "Help message for option 1", "-o", "--opt", false, NArgs.zero),
-        ArgOptional("p", "Help message for option 2", "-p", null, false, NArgs.one),
-        ArgOptional("q", "Help message for option 3", null, "--qqq", false, NArgs.any),
+        ArgOptional("o", "Help message for option 1", "-o", "--opt", false, fromText(0)),
+        ArgOptional("p", "Help message for option 2", "-p", null, false, fromText(".")),
+        ArgOptional("q", "Help message for option 3", null, "--qqq", false, fromText("*")),
     ];
-    auto helpArg = ArgOptional("help", "Display this message", "-h", "--help", false, NArgs.zero);
+    auto helpArg = ArgOptional("help", "Display this message", "-h", "--help", false, fromText(0));
     auto helpText = text(
         "This is a sample help message for testing. Since the message count is over 80, t",
         "he message will be wrapped.");
@@ -163,9 +164,9 @@ unittest {
     auto sub2 = new ArgumentParser();
 
     auto optionals = [
-        ArgOptional("o", "", "-o", "--opt", false, NArgs.zero),
+        ArgOptional("o", "", "-o", "--opt", false, fromText(0)),
     ];
-    auto helpArg = ArgOptional("help", "Display this messages", "-h", "--help", false, NArgs.zero);
+    auto helpArg = ArgOptional("help", "Display this messages", "-h", "--help", false, fromText(0));
 
     sub1.name_ = "sub1";
     sub1.shortDescription_ = "Short description for sub1";
@@ -219,14 +220,30 @@ string sampleText(in ArgOptional arg) {
         }
     }();
 
-    with (NArgs) final switch (arg.nArgs) {
-    case zero:
-        return displayName;
-    case one:
-        return text(displayName, " <", arg.id.toUpper(), ">");
-    case any:
-        return text(displayName, " <", arg.id.toUpper(), "...>");
-    }
+    // dfmt off
+    return arg.nArgs.match!(
+        (NArgsOption n) {
+            with (NArgsOption) final switch (n) {
+            case one:
+                return text(displayName, " <", arg.id.toUpper(), ">");
+            case zeroOrOne:
+                assert(0);
+            case moreThanEqualZero:
+                return text(displayName, " <", arg.id.toUpper(), "...>");
+            case moreThanEqualOne:
+                assert(0);
+            }
+        },
+        (uint n) {
+            switch (n) {
+            case 0:
+                return displayName;
+            default:
+                assert(0);
+            }
+        },
+    );
+    // dfmt on
 }
 
 string sampleText(in ArgumentParser arg) {

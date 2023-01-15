@@ -3,6 +3,8 @@ module nagi.argparse.types;
 import std.variant;
 import std.typecons;
 import std.conv;
+import std.sumtype;
+import std.exception;
 
 struct ArgValue {
     Variant value;
@@ -116,10 +118,44 @@ class ParseResult {
     }
 }
 
-enum NArgs {
-    zero,
-    one,
-    any,
+enum NArgsOption {
+    one = ".",
+    zeroOrOne = "?",
+    moreThanEqualZero = "*",
+    moreThanEqualOne = "+",
+}
+
+alias NArgs = SumType!(NArgsOption, uint);
+
+import std.traits;
+
+NArgs fromText(T)(T txt) if (isIntegral!T || is(T : string)) {
+
+    static if (isIntegral!T) {
+        assert(txt >= 0, text("nargs should be greater than equal 0"));
+        NArgs a = txt;
+        return a;
+    }
+    else static if (is(T : string)) {
+        foreach (mem; EnumMembers!NArgsOption) {
+            if (mem == txt) {
+                NArgs a = mem;
+                return a;
+            }
+        }
+        assert(false, text("Unknown nargs identifier: ", txt));
+    }
+}
+
+unittest {
+    assert(NArgs.init == NArgs(NArgsOption.one));
+
+    assert(fromText(0) == NArgs(0));
+    assert(fromText(1) == NArgs(1));
+    assert(fromText(".") == NArgs(NArgsOption.one));
+    assert(fromText("?") == NArgs(NArgsOption.zeroOrOne));
+    assert(fromText("*") == NArgs(NArgsOption.moreThanEqualZero));
+    assert(fromText("+") == NArgs(NArgsOption.moreThanEqualOne));
 }
 
 struct ArgPositional {
