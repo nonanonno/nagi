@@ -56,10 +56,6 @@ class ArgumentParser {
         this.optionals_
             .filter!(o => o.nArgs == fromText(0))
             .each!((o) { result[o.id] = false; });
-        // set [] for array
-        this.optionals_
-            .filter!(o => o.nArgs == fromText("*"))
-            .each!((o) { result[o.id] = cast(string[])[]; });
 
         parseImpl(argsWithCommandName[1 .. $], countedPositionals, countedOptionals, result);
 
@@ -133,7 +129,7 @@ unittest {
         assert("pos2" !in result);
         assert("o" in result && result["o"].as!bool == false);
         assert("p" !in result);
-        assert("q" in result && result["q"].as!(string[]) == [], text(result));
+        assert("q" !in result);
     }
 }
 
