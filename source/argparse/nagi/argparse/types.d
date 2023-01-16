@@ -5,101 +5,34 @@ import std.typecons;
 import std.conv;
 import std.sumtype;
 import std.exception;
+import std.algorithm;
+import std.array;
 
 struct ArgValue {
     Variant value;
     alias value this;
 
-    this(T)(T value) {
+    this(T)(T value) if (isArray!T && !isSomeString!T) {
+        this.value = value.map!(v => Variant(v)).array();
+    }
+
+    this(T)(T value) if (!isArray!T || isSomeString!T) {
         this.value = value;
     }
 
-    auto opAssign(T)(T value) {
-        this.value = value;
+    auto opAssign(T)(T value) if (isArray!T && !isSomeString!T) {
+        this.value = value.map!(v => Variant(v)).array();
         return this;
     }
 
-    T as(T)() const {
-        import std.traits;
-        import std.conv : to, text;
-        import std.exception;
-
-        static if (isNumeric!T || isBoolean!T) {
-            if (value.convertsTo!real) {
-                return to!T(value.get!real);
-            }
-            else if (value.convertsTo!(const(char)[])) {
-                return to!T(value.get!(const(char)[]));
-            }
-            else if (value.convertsTo!(immutable(char)[])) {
-                return to!T(value.get!(immutable(char)[]));
-            }
-            else {
-                enforce(false, text("Type ", value.type(), " does not convert to ", typeid(T)));
-                assert(0);
-            }
-        }
-        else static if (is(T : Object)) {
-            return to!(T)(value.get!(Object));
-        }
-        else static if (isSomeString!(T)) {
-            return to!(T)((cast(Variant*)&value).toString());
-        }
-        else static if (isArray!(T)) {
-            if (value.convertsTo!(T)) {
-                return to!T(value.get!(T));
-            }
-            else if (value.convertsTo!(const(char)[][])) {
-                return to!T(value.get!(const(char)[][]));
-            }
-            else if (value.convertsTo!(immutable(char)[][])) {
-                return to!T(value.get!(immutable(char)[][]));
-            }
-            else {
-                enforce(false, text("Type ", value.type(), " does not convert to ", typeid(T)));
-                assert(0);
-            }
-        }
-        else {
-            static assert(false, text("unsupported type for as: ", typeid(T)));
-        }
+    auto opAssign(T)(T value) if (!isArray!T || isSomeString!T) {
+        this.value = value;
+        return this;
     }
 
     string toString() const @trusted {
         return (cast(Variant*)&value).toString();
     }
-}
-
-@("ArgValue can hold many types of value and `as` function can get it with expected type")
-unittest {
-    assert(ArgValue("abc").as!string == "abc");
-    assert(ArgValue("123").as!int == 123);
-    assert(ArgValue(123).as!int == 123);
-    assert(ArgValue(123).as!string == "123");
-
-    assert(ArgValue("123.45").as!float == 123.45f);
-    assert(ArgValue(123.45).as!double == 123.45);
-    assert(ArgValue("true").as!bool == true);
-    assert(ArgValue(true).as!bool == true);
-    assert(ArgValue("false").as!bool == false);
-
-    assert(ArgValue(["abc", "def"]).as!(string[]) == ["abc", "def"]);
-    assert(ArgValue(["123", "456"]).as!(int[]) == [123, 456]);
-    assert(ArgValue(["123.45", "456.78"]).as!(double[]) == [
-            123.45, 456.78
-        ]);
-    assert(ArgValue([123, 456]).as!(int[]) == [123, 456]);
-    assert(ArgValue([123.45, 456.78]).as!(double[]) == [123.45, 456.78]);
-}
-
-@("Invalid convertion raises an exception")
-unittest {
-    import std.exception;
-
-    assertThrown(ArgValue("abc").as!int);
-    assertThrown(ArgValue(["abc", "def"]).as!(int[]));
-    assertThrown(ArgValue([123, 456]).as!(double[]));
-    assertThrown(ArgValue([123, 456]).as!(string[]));
 }
 
 class ParseResult {

@@ -1,9 +1,13 @@
 module nagi.argparse.action;
 
 import nagi.argparse.types;
+import nagi.argparse.utils;
 import std.conv;
 import std.exception;
 import std.sumtype;
+import std.variant;
+import std.algorithm;
+import std.array;
 
 void parseResultInitialize(string id, NArgs nArgs, ParseResult result) {
     // dfmt off
@@ -59,7 +63,7 @@ int defaultArgPositionalAction(string[] args, string id, NArgs nArgs, ParseResul
             case moreThanEqualZero, moreThanEqualOne:
                 assert(id in result.args);
                 auto picked = pickSomeValues(args);
-                result.args[id] ~= picked;
+                result.args[id] ~= picked.map!(p => Variant(p)).array();
                 return picked.length.to!int;
             }
         },
@@ -69,7 +73,7 @@ int defaultArgPositionalAction(string[] args, string id, NArgs nArgs, ParseResul
             int capacity = n - result.args[id].as!(string[]).length.to!int;
             assert(capacity > 0);
             auto picked = pickSomeValues(args, capacity);
-            result.args[id] ~= picked;
+            result.args[id] ~= picked.map!(p => Variant(p)).array();
             return picked.length.to!int;
         }
     );
@@ -133,7 +137,7 @@ unittest {
             parseResultInitialize(id, nArgs, result);
             auto consume = defaultArgPositionalAction(c.args, id, nArgs, result);
             assert(consume == c.consume, text(txt, " : ", consume, " <-> ", c));
-            assert(id in result && result[id] == c.result, text(txt, " : ", result, " <-> ", c));
+            assert(id in result && result[id].as!(string[]) == c.result, text(txt, " : ", result, " <-> ", c));
         }
     }
 
@@ -145,7 +149,9 @@ unittest {
         parseResultInitialize(id, nArgs, result);
         assert(defaultArgPositionalAction(["ABC", "DEF", "-f", "GHI"], id, nArgs, result) == 2);
         assert(defaultArgPositionalAction(["GHI", "JKL"], id, nArgs, result) == 2);
-        assert(id in result && result[id] == ["ABC", "DEF", "GHI", "JKL"], text("Case: ", txt, " -> ", result));
+        assert(id in result && result[id].as!(string[]) == [
+                "ABC", "DEF", "GHI", "JKL"
+            ], text("Case: ", txt, " -> ", result));
 
     }
 }
@@ -175,7 +181,7 @@ unittest {
         auto consume = defaultArgPositionalAction(c.args, id, nArgs, result);
 
         assert(consume == c.consume, text(consume, " <-> ", c));
-        assert(id in result && result[id] == c.result, text(result, " <-> ", c));
+        assert(id in result && result[id].as!(string[]) == c.result, text(result, " <-> ", c));
     }
 
     // Case for splitting by flag
@@ -185,7 +191,7 @@ unittest {
         parseResultInitialize(id, nArgs, result);
         assert(defaultArgPositionalAction(["ABC", "DEF", "-f", "FOO"], id, nArgs, result) == 2);
         assert(defaultArgPositionalAction(["GHI", "JKL"], id, nArgs, result) == 1);
-        assert(id in result && result[id] == ["ABC", "DEF", "GHI"], text(result));
+        assert(id in result && result[id].as!(string[]) == ["ABC", "DEF", "GHI"], text(result));
     }
 }
 
@@ -217,7 +223,7 @@ int defaultArgOptionalAction(string[] args, string id, NArgs nArgs, ParseResult 
                 case moreThanEqualZero, moreThanEqualOne:
                     assert(id in result.args);
                     if (isNotNull(keyValue[1])) {
-                        result.args[id] ~= keyValue[1];
+                        result.args[id] ~= [Variant(keyValue[1])];
                     }
                     break;
                 }
@@ -229,7 +235,7 @@ int defaultArgOptionalAction(string[] args, string id, NArgs nArgs, ParseResult 
                 }else{
                     assert(id in result.args);
                     if (isNotNull(keyValue[1])) {
-                        result.args[id] ~= keyValue[1];
+                        result.args[id] ~= [Variant(keyValue[1])];
                     }
                 }
             }
@@ -258,7 +264,7 @@ int defaultArgOptionalAction(string[] args, string id, NArgs nArgs, ParseResult 
                 case moreThanEqualZero, moreThanEqualOne:
                     assert(id in result.args);
                     auto picked = pickSomeValues(args[1..$]);
-                    result.args[id] ~= picked;
+                    result.args[id] ~= picked.map!(p => Variant(p)).array();
                     return picked.length.to!int + 1;
                 }
             },
@@ -270,7 +276,7 @@ int defaultArgOptionalAction(string[] args, string id, NArgs nArgs, ParseResult 
                     assert(id in result.args);
                     auto capacity = n - result.args[id].as!(string[]).length.to!int;
                     auto picked = pickSomeValues(args[1..$], capacity);
-                    result.args[id] ~= picked;
+                    result.args[id] ~= picked.map!(p => Variant(p)).array();
                     return picked.length.to!int + 1;
                 }
             },
@@ -369,7 +375,7 @@ unittest {
             parseResultInitialize(id, nArgs, result);
             auto consume = defaultArgOptionalAction(c.args, id, nArgs, result);
             assert(consume == c.consume, text("Case: ", txt, " -> ", consume, " <-> ", c));
-            assert(id in result && result.args[id] == c.result, text("Case: ", txt, " -> ", result));
+            assert(id in result && result.args[id].as!(string[]) == c.result, text("Case: ", txt, " -> ", result));
         }
     }
 
@@ -382,7 +388,9 @@ unittest {
 
         assert(defaultArgOptionalAction(["-o", "ABC", "DEF", "-f", "GHI"], id, nArgs, result) == 3);
         assert(defaultArgOptionalAction(["-o", "GHI", "JKL"], id, nArgs, result) == 3);
-        assert(id in result && result[id] == ["ABC", "DEF", "GHI", "JKL"], text("Case: ", txt, " -> ", result));
+        assert(id in result && result[id].as!(string[]) == [
+                "ABC", "DEF", "GHI", "JKL"
+            ], text("Case: ", txt, " -> ", result));
     }
 }
 
@@ -402,7 +410,7 @@ unittest {
         auto result = new ParseResult();
         auto consume = defaultArgOptionalAction(c.args, id, nArgs, result);
         assert(consume == 1, text("Case: ", c, " -> ", consume));
-        assert(id in result && result[id] == c.result);
+        assert(id in result && result[id].as!bool == c.result);
     }
 
     // Case for null call
@@ -439,7 +447,7 @@ unittest {
         auto consume = defaultArgOptionalAction(c.args, id, nArgs, result);
 
         assert(consume == c.consume, text(consume, " <-> ", c));
-        assert(id in result && result[id] == c.result, text(result, " <-> ", c));
+        assert(id in result && result[id].as!(string[]) == c.result, text(result, " <-> ", c));
     }
 
     // Case for splitting by flag
@@ -449,7 +457,7 @@ unittest {
         parseResultInitialize(id, nArgs, result);
         assert(defaultArgOptionalAction(["-o", "ABC", "DEF", "-f", "FOO"], id, nArgs, result) == 3);
         assert(defaultArgOptionalAction(["-o", "GHI", "JKL"], id, nArgs, result) == 2);
-        assert(id in result && result[id] == ["ABC", "DEF", "GHI"], text(result));
+        assert(id in result && result[id].as!(string[]) == ["ABC", "DEF", "GHI"], text(result));
     }
 }
 

@@ -13,6 +13,7 @@ import nagi.argparse.types;
 import nagi.argparse.action;
 import nagi.argparse.help_format;
 import nagi.argparse.validation;
+import nagi.argparse.utils;
 
 class ArgumentParser {
     ParseResult parse(string[] argsWithCommandName) {
@@ -134,7 +135,7 @@ unittest {
         assert("pos2" in result && result["pos2"].as!double == 123.45);
         assert("o" in result && result["o"].as!bool == true);
         assert("p" in result && result["p"].as!string == "ABC", text(result));
-        assert("q" in result && result["q"].as!(int[]) == [123, 456]);
+        assert("q" in result && result["q"].as!(int[]) == [123, 456], text(result));
         assert(result.trail == ["REST1", "REST2"]);
     }
     {
@@ -421,7 +422,7 @@ unittest {
         ];
         auto result = new ParseResult();
         parseImpl(["POS1", "POS2"], counted(positionals), [], result);
-        assert(id in result && result[id] == ["POS1", "POS2"]);
+        assert(id in result && result[id].as!(string[]) == ["POS1", "POS2"], text(result));
     }
     {
         auto positionals = [
@@ -432,7 +433,9 @@ unittest {
         ];
         auto result = new ParseResult();
         parseImpl(["POS1", "POS2", "-o", "FOO", "POS3"], counted(positionals), counted(optionals), result);
-        assert(id in result && result[id] == ["POS1", "POS2", "POS3"]);
+        assert(id in result && result[id].as!(string[]) == [
+                "POS1", "POS2", "POS3"
+            ]);
     }
     {
         auto positionals = [
@@ -443,7 +446,9 @@ unittest {
         ];
         auto result = new ParseResult();
         parseImpl(["POS1", "POS2", "-o", "FOO", "POS3"], counted(positionals), counted(optionals), result);
-        assert(id in result && result[id] == ["POS1", "POS2", "POS3"]);
+        assert(id in result && result[id].as!(string[]) == [
+                "POS1", "POS2", "POS3"
+            ]);
     }
     {
         auto positionals = [
@@ -454,7 +459,7 @@ unittest {
         ];
         auto result = new ParseResult();
         parseImpl(["POS1", "POS2", "-o", "FOO", "POS3"], counted(positionals), counted(optionals), result);
-        assert(id in result && result[id] == ["POS1"]);
+        assert(id in result && result[id].as!(string[]) == ["POS1"]);
     }
     {
         auto positionals = [
@@ -465,7 +470,9 @@ unittest {
         ];
         auto result = new ParseResult();
         parseImpl(["POS1", "POS2", "-o", "FOO", "POS3"], counted(positionals), counted(optionals), result);
-        assert(id in result && result[id] == ["POS1", "POS2", "POS3"]);
+        assert(id in result && result[id].as!(string[]) == [
+                "POS1", "POS2", "POS3"
+            ]);
     }
 }
 

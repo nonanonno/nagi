@@ -5,6 +5,7 @@ import std.sumtype;
 import std.conv;
 
 import nagi.argparse.types;
+import nagi.argparse.utils;
 
 void checkRequired(T)(in Counter!T arg) {
     if (arg.isRequired) {
