@@ -13,7 +13,38 @@ import std.variant;
  *   v = a Variant
  * Returns: T object
  */
-T as(T)(Variant v) {
+T as(T, V)(V v) {
+    import std.traits;
+
+    static if (isPointer!V) {
+        return asImpl!(T)(*v);
+    }
+    else {
+        return asImpl!(T)(v);
+    }
+}
+
+unittest {
+    import std.exception;
+    import std.conv;
+
+    assert(as!bool(Variant("true")) == true);
+    assert(as!bool(Variant("false")) == false);
+    assert(as!int(Variant(123)) == 123);
+    assert(as!int(Variant("123")) == 123);
+    assert(as!string(Variant(123)) == "123");
+    assert(as!string(Variant([123, 456])) == "[123, 456]");
+    assert(as!(int[])(Variant([123, 456])) == [123, 456]);
+    assert(as!(int[])(Variant(["123", "456"])) == [123, 456]);
+    assert(as!(int[])(Variant([Variant("123"), Variant("456")])) == [123, 456]);
+    assert(as!(string[])(Variant([Variant(123), Variant(456)])) == [
+            "123", "456"
+        ]);
+
+    assertThrown!ConvException(as!(string[])(Variant([123, 456])));
+}
+
+private T asImpl(T)(Variant v) {
     import std.conv;
     import std.exception;
     import std.traits;
@@ -68,24 +99,4 @@ T as(T)(Variant v) {
     else {
         static assert(false, text("unsuported type for as: ", typeid(T)));
     }
-}
-
-unittest {
-    import std.exception;
-    import std.conv;
-
-    assert(as!bool(Variant("true")) == true);
-    assert(as!bool(Variant("false")) == false);
-    assert(as!int(Variant(123)) == 123);
-    assert(as!int(Variant("123")) == 123);
-    assert(as!string(Variant(123)) == "123");
-    assert(as!string(Variant([123, 456])) == "[123, 456]");
-    assert(as!(int[])(Variant([123, 456])) == [123, 456]);
-    assert(as!(int[])(Variant(["123", "456"])) == [123, 456]);
-    assert(as!(int[])(Variant([Variant("123"), Variant("456")])) == [123, 456]);
-    assert(as!(string[])(Variant([Variant(123), Variant(456)])) == [
-            "123", "456"
-        ]);
-
-    assertThrown!ConvException(as!(string[])(Variant([123, 456])));
 }
