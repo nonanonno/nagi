@@ -97,6 +97,7 @@ struct ArgPositional {
     bool isRequired;
     NArgs nArgs;
     ActionFunc action;
+    ArgValue defaultValue;
 }
 
 struct ArgOptional {
@@ -107,6 +108,7 @@ struct ArgOptional {
     bool isRequired;
     NArgs nArgs;
     ActionFunc action;
+    ArgValue defaultValue;
 }
 
 struct Counter(T) {

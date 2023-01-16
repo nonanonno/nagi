@@ -65,6 +65,25 @@ class ArgumentParser {
             text("ArgumentParser cannot have both of positionals and subParsers"));
     }
 
+    private void setDefault(ParseResult result) {
+        foreach (arg; this.positionals_) {
+            if (arg.defaultValue.hasValue()) {
+                result.args[arg.id] = arg.defaultValue;
+            }
+        }
+        // set false for flags
+        this.optionals_
+            .filter!(o => o.nArgs == fromText(0))
+            .each!((o) { result[o.id] = false; });
+
+        foreach (arg; this.optionals_) {
+            if (arg.defaultValue.hasValue()) {
+                result.args[arg.id] = arg.defaultValue;
+            }
+        }
+
+    }
+
     private ParseResult parseAsEndPoint(string[] argsWithCommandName) {
         assert(argsWithCommandName.length > 0);
         assert(subParsers_.length == 0);
@@ -81,10 +100,7 @@ class ArgumentParser {
         auto countedOptionals = counted(this.optionals_);
         auto result = new ParseResult();
 
-        // set false for flags
-        this.optionals_
-            .filter!(o => o.nArgs == fromText(0))
-            .each!((o) { result[o.id] = false; });
+        this.setDefault(result);
 
         parseImpl(argsWithCommandName[1 .. $], countedPositionals, countedOptionals, result);
 
@@ -105,6 +121,9 @@ class ArgumentParser {
         auto prog = argsWithCommandName[0];
         auto optionals = counted(helpOption_.id !is null ? (helpOption_ ~ optionals_) : optionals_);
         auto result = new ParseResult();
+
+        this.setDefault(result);
+
         auto argsForSubParser = parseImplForSubParser(argsWithCommandName[1 .. $], optionals, result);
 
         if (helpOption_.id && helpOption_.id in result) {
@@ -348,6 +367,61 @@ unittest {
         assert("pos1" in ret.subCommand.result.subCommand.result && ret
                 .subCommand.result.subCommand.result["pos1"].as!int == 123);
 
+    }
+}
+
+@("Default value")
+unittest {
+    {
+        auto parser = new ArgumentParser();
+        parser.positionals_ = [
+            ArgPositional("pos1", "", false, fromText("."), &defaultArgPositionalAction, ArgValue(
+                    "ABC")),
+        ];
+        auto ret = parser.parse(["prog"]);
+        assert("pos1" in ret && ret["pos1"].as!string == "ABC");
+    }
+    {
+        auto parser = new ArgumentParser();
+        parser.optionals_ = [
+            ArgOptional("o", "", "-o", "--opt", false, fromText(0), &defaultArgOptionalAction, ArgValue(
+                    "ABC")),
+        ];
+        auto ret = parser.parse(["prog"]);
+        assert("o" in ret && ret["o"].as!string == "ABC");
+    }
+    {
+        auto parser = new ArgumentParser();
+        auto sub = new ArgumentParser();
+        sub.name_ = "sub";
+        parser.optionals_ = [
+            ArgOptional("o", "", "-o", "--opt", false, fromText(0), &defaultArgOptionalAction, ArgValue(
+                    "ABC")),
+        ];
+        parser.subParsers_ = [sub];
+        auto ret = parser.parse(["prog", "sub"]);
+        assert("o" in ret && ret["o"].as!string == "ABC");
+    }
+    {
+        auto parser = new ArgumentParser();
+        parser.optionals_ = [
+            ArgOptional("o", "", "-o", "--opt", false, fromText(3), &defaultArgOptionalAction,
+                ArgValue(["ABC", "DEF", "GHI"])),
+        ];
+        auto ret = parser.parse(["prog"]);
+        assert("o" in ret && ret["o"].as!(string[]) == ["ABC", "DEF", "GHI"]);
+    }
+    {
+        auto parser = new ArgumentParser();
+        parser.optionals_ = [
+            ArgOptional("o", "", "-o", "--opt", false, fromText(3), &defaultArgOptionalAction,
+                ArgValue([123.45, 345.67, 678.91])),
+        ];
+        auto ret = parser.parse(["prog"]);
+        assert("o" in ret && ret["o"].as!(double[]) == [123.45, 345.67, 678.91]);
+        assert("o" in ret && ret["o"].as!(string[]) == [
+                "123.45", "345.67", "678.91"
+            ]);
     }
 }
 

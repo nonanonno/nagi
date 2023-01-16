@@ -48,12 +48,18 @@ struct Arg {
         return this;
     }
 
+    Arg defaultValue(T)(T value) {
+        this.defaultValue_ = ArgValue(value);
+        return this;
+    }
+
     package string name_;
     package string helpText_ = null;
     package char optShort_ = '\0';
     package string optLong_ = null;
     package bool isRequired_ = false;
     package NArgs nArgs_ = NArgs.init;
+    package ArgValue defaultValue_;
 
     package bool isOptional() const @nogc pure @safe {
         return optShort_ != '\0' || optLong_ != null;
@@ -134,6 +140,7 @@ struct Command {
                 a.isRequired_,
                 a.nArgs_,
                 &defaultArgPositionalAction,
+                a.defaultValue_,
         )).array();
     }
 
@@ -147,6 +154,7 @@ struct Command {
                 a.isRequired_,
                 a.nArgs_,
                 &defaultArgOptionalAction,
+                a.defaultValue_,
         )).array();
     }
 }
@@ -175,6 +183,11 @@ unittest {
                 .help("Help for environment.")
                 .nArgs("*"))
         .arg(Arg("foo").optLong())
+        .arg(Arg("default")
+                .defaultValue("ABC"))
+        .arg(Arg("defaultOpt")
+                .optShort()
+                .defaultValue(123))
         .build();
 
     assert(parser.name_ == "command");
@@ -183,6 +196,8 @@ unittest {
     assert(parser.positionals_ == [
             ArgPositional("name", "Help for name.", true, fromText("."), &defaultArgPositionalAction),
             ArgPositional("num", null, false, fromText("."), &defaultArgPositionalAction),
+            ArgPositional("default", null, false, fromText("."), &defaultArgPositionalAction, ArgValue(
+                "ABC")),
         ], text(parser.positionals_));
 
     assert(parser.optionals_ == [
@@ -191,6 +206,8 @@ unittest {
             ArgOptional("environment", "Help for environment.", null, "--env", false, fromText("*"),
                 &defaultArgOptionalAction),
             ArgOptional("foo", null, null, "--foo", false, fromText("."), &defaultArgOptionalAction),
+            ArgOptional("defaultOpt", null, "-d", null, false, fromText("."), &defaultArgOptionalAction, ArgValue(
+                123)),
         ], text(parser.optionals_));
     assert(parser.helpOption_ == ArgOptional("help", "Display this message.", "-h", "--help", false,
             fromText(0), &defaultArgOptionalAction));

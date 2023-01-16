@@ -52,6 +52,18 @@ unittest {
             "                          1234567890\n",
             "                          1234567890\n",
     ));
+    // defaults
+    assert(generateHelpItem(
+            ArgPositional("name", "help", true, fromText("."), null, ArgValue("ABC")), 10, 60, 2) ==
+            "  <NAME>    help [default: ABC]\n");
+    assert(generateHelpItem(
+            ArgOptional("option", "help", "-o", "--option", false, fromText("*"), null, ArgValue([
+                123.45, 456.78
+            ])),
+        10, 60, 2) == text(
+        "  -o, --option <OPTION...>\n",
+        "            help [default: [123.45, 456.78]]\n"
+    ));
     auto parser = new ArgumentParser();
     parser.name_ = "command";
     parser.shortDescription_ = "short description";
@@ -251,7 +263,11 @@ string sampleText(in ArgumentParser arg) {
 }
 
 string descriptionText(T)(in T arg) if (is(T == ArgPositional) || is(T == ArgOptional)) {
-    return arg.helpText;
+    string buffer = arg.helpText;
+    if (arg.defaultValue.hasValue()) {
+        buffer ~= text(" [default: ", arg.defaultValue, "]");
+    }
+    return buffer;
 }
 
 string descriptionText(T)(in T arg) if (is(T == ArgumentParser)) {
