@@ -99,20 +99,22 @@ struct Command {
     }
 
     ArgumentParser build() {
-        auto parser = new ArgumentParser();
-
-        parser.name_ = this.name_;
-        parser.helpText_ = this.helpText_;
-        parser.shortDescription_ = this.shortDescription_;
-        parser.positionals_ = generateArgPositionals();
-        parser.optionals_ = generateArgOptionals(generateHelpOption_);
-
+        ArgOptional helpOption;
         if (this.generateHelpOption_) {
-            parser.helpOption_ = ArgOptional(
-                "help", "Display this message.", "-h", "--help", false, fromText(0), &defaultArgOptionalAction);
+            helpOption = ArgOptional("help", "Display this message.", "-h", "--help", false,
+                fromText(0), &defaultArgOptionalAction);
         }
+        auto parser = new ArgumentParser(
+            this.name_,
+            this.helpText_,
+            this.shortDescription_,
+            generateArgPositionals(),
+            generateArgOptionals(),
+            helpOption,
+            this.subParsers_,
+        );
 
-        parser.subParsers_ = this.subParsers_;
+        parser.checkConfiguration();
 
         return parser;
     }
@@ -135,7 +137,7 @@ struct Command {
         )).array();
     }
 
-    private ArgOptional[] generateArgOptionals(bool genHelp) {
+    private ArgOptional[] generateArgOptionals() {
         auto args = this.args_.filter!(a => a.isOptional()).array();
         return args.map!(a => ArgOptional(
                 a.name_,

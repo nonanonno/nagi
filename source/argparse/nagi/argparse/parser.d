@@ -29,6 +29,25 @@ class ArgumentParser {
         messageSink_ = stdout;
     }
 
+    package this(
+        string name,
+        string helpText,
+        string shortDescription,
+        ArgPositional[] positionals,
+        ArgOptional[] optionals,
+        ArgOptional helpOption,
+        ArgumentParser[] subParsers,
+    ) {
+        this.name_ = name;
+        this.helpText_ = helpText;
+        this.shortDescription_ = shortDescription;
+        this.positionals_ = positionals;
+        this.optionals_ = optionals;
+        this.helpOption_ = helpOption;
+        this.subParsers_ = subParsers;
+        messageSink_ = stdout;
+    }
+
     package string name_;
     package string helpText_;
     package string shortDescription_;
@@ -37,6 +56,14 @@ class ArgumentParser {
     package ArgOptional helpOption_;
     package ArgumentParser[] subParsers_;
     package File messageSink_;
+
+    package void checkConfiguration() {
+        assertNotThrown!ArgumentException(
+            checkArgConsistency(positionals_, optionals_
+                ~ (helpOption_.id ? [helpOption_] : [])));
+        assert(positionals_.length == 0 || subParsers_.length == 0,
+            text("ArgumentParser cannot have both of positionals and subParsers"));
+    }
 
     private ParseResult parseAsEndPoint(string[] argsWithCommandName) {
         assert(argsWithCommandName.length > 0);
