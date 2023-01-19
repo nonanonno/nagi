@@ -7,6 +7,7 @@ import std.sumtype;
 import std.exception;
 import std.algorithm;
 import std.array;
+import std.traits;
 
 struct ArgValue {
     Variant value;
@@ -51,16 +52,14 @@ class ParseResult {
     }
 }
 
-enum NArgsOption {
+package enum NArgsOption {
     one = ".",
     zeroOrOne = "?",
     moreThanEqualZero = "*",
     moreThanEqualOne = "+",
 }
 
-alias NArgs = SumType!(NArgsOption, uint);
-
-import std.traits;
+package alias NArgs = SumType!(NArgsOption, uint);
 
 NArgs fromText(T)(T txt) if (isIntegral!T || is(T : string)) {
 
@@ -91,7 +90,7 @@ unittest {
     assert(fromText("+") == NArgs(NArgsOption.moreThanEqualOne));
 }
 
-struct ArgPositional {
+package struct ArgPositional {
     string id;
     string helpText;
     bool isRequired;
@@ -100,7 +99,7 @@ struct ArgPositional {
     ArgValue defaultValue;
 }
 
-struct ArgOptional {
+package struct ArgOptional {
     string id;
     string helpText;
     string optShort;
@@ -111,7 +110,7 @@ struct ArgOptional {
     ArgValue defaultValue;
 }
 
-struct Counter(T) {
+package struct Counter(T) {
     T data;
     int count = 0;
     alias data this;
@@ -121,7 +120,7 @@ struct Counter(T) {
     }
 }
 
-Counter!(T)[] counted(T)(T[] t) {
+package Counter!(T)[] counted(T)(T[] t) {
     import std.algorithm : map;
     import std.array : array;
 
