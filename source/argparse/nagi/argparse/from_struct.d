@@ -20,12 +20,17 @@ private ArgumentParser[] getSubParsers(ST)() if (isSumType!ST) {
 }
 
 private Command getCommand(T)() {
+    Command cmd;
     static if (hasUDA!(T, Command)) {
-        return getUDAs!(T, Command)[0];
+        cmd = getUDAs!(T, Command)[0];
+        if (cmd.id_ is null) {
+            cmd.id_ = T.stringof;
+        }
     }
     else {
-        return Command(T.stringof);
+        cmd = Command(T.stringof);
     }
+    return cmd;
 }
 
 private Arg getArg(T, string mem)() {

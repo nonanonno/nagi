@@ -16,13 +16,17 @@ import nagi.argparse.validation;
 import nagi.argparse.utils;
 
 class ArgumentParser {
-    ParseResult parse(string[] argsWithCommandName) {
+    ParseResult parse(string[] argsWithCommandName, string[] commandPrefix) {
         if (subParsers_.length == 0) {
-            return parseAsEndPoint(argsWithCommandName);
+            return parseAsEndPoint(argsWithCommandName, commandPrefix);
         }
         else {
-            return parseAsSubParsers(argsWithCommandName);
+            return parseAsSubParsers(argsWithCommandName, commandPrefix);
         }
+    }
+
+    ParseResult parse(string[] argsWithCommandName) {
+        return parse(argsWithCommandName, []);
     }
 
     package this() {
@@ -84,14 +88,15 @@ class ArgumentParser {
 
     }
 
-    private ParseResult parseAsEndPoint(string[] argsWithCommandName) {
+    private ParseResult parseAsEndPoint(string[] argsWithCommandName, string[] commandPrefix) {
         assert(argsWithCommandName.length > 0);
         assert(subParsers_.length == 0);
         if (helpOption_.id) {
             if (canFind(argsWithCommandName, helpOption_.optShort) ||
                 canFind(argsWithCommandName, helpOption_.optLong)
                 ) {
-                messageSink_.writeln(generateHelpMessage(argsWithCommandName[0], this.helpText_, this.positionals_, this
+                messageSink_.writeln(generateHelpMessage((commandPrefix ~ argsWithCommandName[0])
+                        .join(" "), this.helpText_, this.positionals_, this
                         .subParsers_, this.optionals_, this.helpOption_));
                 return null;
             }
@@ -115,7 +120,7 @@ class ArgumentParser {
         return result;
     }
 
-    private ParseResult parseAsSubParsers(string[] argsWithCommandName) {
+    private ParseResult parseAsSubParsers(string[] argsWithCommandName, string[] commandPrefix) {
         assert(argsWithCommandName.length > 0);
         assert(positionals_.length == 0);
         auto prog = argsWithCommandName[0];
@@ -127,7 +132,8 @@ class ArgumentParser {
         auto argsForSubParser = parseImplForSubParser(argsWithCommandName[1 .. $], optionals, result);
 
         if (helpOption_.id && helpOption_.id in result) {
-            messageSink_.writeln(generateHelpMessage(argsWithCommandName[0], this.helpText_, this.positionals_, this
+            messageSink_.writeln(generateHelpMessage((commandPrefix ~ argsWithCommandName[0])
+                    .join(" "), this.helpText_, this.positionals_, this
                     .subParsers_, this.optionals_, this.helpOption_));
             return null;
         }
@@ -146,7 +152,7 @@ class ArgumentParser {
             text("Unknown command ", argsForSubParser[0], " found."));
 
         auto subParser = foundSubParsers[0];
-        auto subParserResult = subParser.parse(argsForSubParser);
+        auto subParserResult = subParser.parse(argsForSubParser, commandPrefix ~ prog);
         if (subParserResult is null) {
             // help is specified. Do nothing.
             return null;
