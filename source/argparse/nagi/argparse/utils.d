@@ -1,6 +1,7 @@
 module nagi.argparse.utils;
 
 import std.variant;
+import std.typecons;
 
 /** 
  * Returns the vaalue stored in the Variant object, explicitly converted to the requested type T.
@@ -88,13 +89,16 @@ private T asImpl(T)(Variant v) {
             alias E = ElementEncodingType!T;
             return v.get!(Variant[])
                 .map!(e => as!E(e))
-                .array();
+                .array().to!T;
         }
         else {
             enforce!ConvException(false, text("Type '", v.type(), "' does not convert to ",
                     typeid(T)));
             assert(0);
         }
+    }
+    else static if (__traits(isSame, TemplateOf!(T), Nullable)) {
+        return as!(TemplateArgsOf!(T))(v).nullable;
     }
     else {
         static assert(false, text("unsuported type for as: ", typeid(T)));

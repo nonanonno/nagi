@@ -105,6 +105,11 @@ struct Command {
         return this;
     }
 
+    Command subCommand(ArgumentParser[] parser) {
+        this.subParsers_ ~= parser;
+        return this;
+    }
+
     ArgumentParser build() {
         ArgOptional helpOption;
         if (this.generateHelpOption_) {

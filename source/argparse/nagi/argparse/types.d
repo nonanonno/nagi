@@ -65,7 +65,7 @@ NArgs fromText(T)(T txt) if (isIntegral!T || is(T : string)) {
 
     static if (isIntegral!T) {
         assert(txt >= 0, text("nargs should be greater than equal 0"));
-        NArgs a = txt;
+        NArgs a = txt.to!uint;
         return a;
     }
     else static if (is(T : string)) {
