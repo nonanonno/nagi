@@ -7,6 +7,7 @@ import nagi.argparse.action;
 import std.algorithm;
 import std.array;
 import std.traits;
+import std.typecons;
 
 struct Arg {
     this(string id) {
@@ -19,17 +20,17 @@ struct Arg {
     }
 
     Arg optShort(char opt) {
-        this.optShort_ = opt;
+        this.optShort_ = "-" ~ opt;
         return this;
     }
 
     Arg optShort() {
-        this.optShort_ = '-'; // auto gen
+        this.optShort_ = "-"; // auto gen
         return this;
     }
 
     Arg optLong(string opt) {
-        this.optLong_ = opt;
+        this.optLong_ = "--" ~ opt;
         return this;
     }
 
@@ -55,22 +56,22 @@ struct Arg {
 
     package string id_;
     package string helpText_ = null;
-    package char optShort_ = '\0';
+    package string optShort_ = null;
     package string optLong_ = null;
-    package bool isRequired_ = false;
+    package bool isRequired_;
     package NArgs nArgs_ = NArgs.init;
     package ArgValue defaultValue_;
 
     package bool isOptional() const @nogc pure @safe {
-        return optShort_ != '\0' || optLong_ != null;
+        return this.optShort_.length > 0 || this.optLong_.length > 0;
     }
 
     package string genShort() const {
-        return optShort_ == '-' ? ("-" ~ id_[0]) : optShort_ != '\0' ? ("-" ~ optShort_) : null;
+        return optShort_ == "-" ? ("-" ~ id_[0]) : optShort_;
     }
 
     package string genLong() const {
-        return optLong_ == "--" ? ("--" ~ id_) : optLong_ != null ? ("--" ~ optLong_) : null;
+        return optLong_ == "--" ? ("--" ~ id_) : optLong_;
     }
 }
 
