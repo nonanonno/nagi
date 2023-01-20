@@ -38,7 +38,7 @@ class ArgumentParser {
         ArgOptional helpOption,
         ArgumentParser[] subParsers,
     ) {
-        this.name_ = name;
+        this.id_ = name;
         this.helpText_ = helpText;
         this.shortDescription_ = shortDescription;
         this.positionals_ = positionals;
@@ -48,7 +48,7 @@ class ArgumentParser {
         messageSink_ = stdout;
     }
 
-    package string name_;
+    package string id_;
     package string helpText_;
     package string shortDescription_;
     package ArgPositional[] positionals_;
@@ -140,7 +140,7 @@ class ArgumentParser {
         optionals.each!((a) { validate(a); });
 
         enforce!ArgumentException(argsForSubParser.length > 0, text("Need a command"));
-        auto foundSubParsers = this.subParsers_.find!(p => p.name_ == argsForSubParser[0]);
+        auto foundSubParsers = this.subParsers_.find!(p => p.id_ == argsForSubParser[0]);
 
         enforce!ArgumentException(foundSubParsers.length > 0,
             text("Unknown command ", argsForSubParser[0], " found."));
@@ -151,7 +151,7 @@ class ArgumentParser {
             // help is specified. Do nothing.
             return null;
         }
-        result.subCommand = tuple(subParser.name_, subParserResult);
+        result.subCommand = tuple(subParser.id_, subParserResult);
 
         return result;
     }
@@ -237,10 +237,10 @@ unittest {
     auto sub2 = new ArgumentParser();
     auto sub2sub = new ArgumentParser();
 
-    sub1.name_ = "sub1";
-    sub2.name_ = "sub2";
+    sub1.id_ = "sub1";
+    sub2.id_ = "sub2";
     sub2.subParsers_ ~= sub2sub;
-    sub2sub.name_ = "subsub";
+    sub2sub.id_ = "subsub";
     parser.subParsers_ ~= sub1;
     parser.subParsers_ ~= sub2;
 
@@ -276,20 +276,20 @@ unittest {
     ];
     parser.helpOption_ = ArgOptional("help", "", "-h", "--help", false, fromText(0), &defaultArgOptionalAction);
 
-    sub1.name_ = "sub1";
+    sub1.id_ = "sub1";
     sub1.optionals_ = [
         ArgOptional("o", "", "-o", "--opt", false, fromText(0), &defaultArgOptionalAction),
     ];
     sub1.helpOption_ = ArgOptional("help", "", "-h", "--help", false, fromText(0), &defaultArgOptionalAction);
 
-    sub2.name_ = "sub2";
+    sub2.id_ = "sub2";
     sub2.optionals_ = [
         ArgOptional("p", "", "-p", null, false, fromText("."), &defaultArgOptionalAction),
     ];
     sub2.helpOption_ = ArgOptional("help", "", "-h", "--help", false, fromText(0), &defaultArgOptionalAction);
     sub2.subParsers_ = [sub2sub];
 
-    sub2sub.name_ = "sub";
+    sub2sub.id_ = "sub";
     sub2sub.optionals_ = [
         ArgOptional("q", "", null, "--qqq", false, fromText("*"), &defaultArgOptionalAction),
     ];
@@ -393,7 +393,7 @@ unittest {
     {
         auto parser = new ArgumentParser();
         auto sub = new ArgumentParser();
-        sub.name_ = "sub";
+        sub.id_ = "sub";
         parser.optionals_ = [
             ArgOptional("o", "", "-o", "--opt", false, fromText(0), &defaultArgOptionalAction, ArgValue(
                     "ABC")),

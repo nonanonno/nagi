@@ -65,7 +65,7 @@ unittest {
         "            help [default: [123.45, 456.78]]\n"
     ));
     auto parser = new ArgumentParser();
-    parser.name_ = "command";
+    parser.id_ = "command";
     parser.shortDescription_ = "short description";
     assert(generateHelpItem(parser, 10, 60, 2) == "  command   short description\n");
 }
@@ -92,7 +92,7 @@ string generateHelpMessage(
         buffer ~= "[OPTION] ";
     }
     if (subParsers.length > 0) {
-        buffer ~= format("{%-(%s,%)} ... ", subParsers.map!(p => p.name_));
+        buffer ~= format("{%-(%s,%)} ... ", subParsers.map!(p => p.id_));
     }
     if (positionals.length > 0) {
         buffer ~= format("%-(%s %) ", positionals.map!(p => sampleText(p)));
@@ -180,9 +180,9 @@ unittest {
     ];
     auto helpArg = ArgOptional("help", "Display this messages", "-h", "--help", false, fromText(0));
 
-    sub1.name_ = "sub1";
+    sub1.id_ = "sub1";
     sub1.shortDescription_ = "Short description for sub1";
-    sub2.name_ = "sub2";
+    sub2.id_ = "sub2";
     sub2.shortDescription_ = "Short description for sub2";
 
     auto helpText = text(
@@ -259,7 +259,7 @@ string sampleText(in ArgOptional arg) {
 }
 
 string sampleText(in ArgumentParser arg) {
-    return arg.name_;
+    return arg.id_;
 }
 
 string descriptionText(T)(in T arg) if (is(T == ArgPositional) || is(T == ArgOptional)) {

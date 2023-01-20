@@ -9,8 +9,8 @@ import std.array;
 import std.traits;
 
 struct Arg {
-    this(string name) {
-        this.name_ = name;
+    this(string id) {
+        this.id_ = id;
     }
 
     Arg help(string helpText) {
@@ -53,7 +53,7 @@ struct Arg {
         return this;
     }
 
-    package string name_;
+    package string id_;
     package string helpText_ = null;
     package char optShort_ = '\0';
     package string optLong_ = null;
@@ -66,17 +66,17 @@ struct Arg {
     }
 
     package string genShort() const {
-        return optShort_ == '-' ? ("-" ~ name_[0]) : optShort_ != '\0' ? ("-" ~ optShort_) : null;
+        return optShort_ == '-' ? ("-" ~ id_[0]) : optShort_ != '\0' ? ("-" ~ optShort_) : null;
     }
 
     package string genLong() const {
-        return optLong_ == "--" ? ("--" ~ name_) : optLong_ != null ? ("--" ~ optLong_) : null;
+        return optLong_ == "--" ? ("--" ~ id_) : optLong_ != null ? ("--" ~ optLong_) : null;
     }
 }
 
 struct Command {
-    this(string name) {
-        this.name_ = name;
+    this(string id) {
+        this.id_ = id;
     }
 
     Command help(string helpText) {
@@ -111,7 +111,7 @@ struct Command {
                 fromText(0), &defaultArgOptionalAction);
         }
         auto parser = new ArgumentParser(
-            this.name_,
+            this.id_,
             this.helpText_,
             this.shortDescription_,
             generateArgPositionals(),
@@ -125,7 +125,7 @@ struct Command {
         return parser;
     }
 
-    package string name_;
+    package string id_;
     package string helpText_ = null;
     package string shortDescription_ = null;
     package bool generateHelpOption_ = true;
@@ -135,7 +135,7 @@ struct Command {
     private ArgPositional[] generateArgPositionals() {
         auto args = this.args_.filter!(a => !a.isOptional());
         return args.map!(a => ArgPositional(
-                a.name_,
+                a.id_,
                 a.helpText_,
                 a.isRequired_,
                 a.nArgs_,
@@ -147,7 +147,7 @@ struct Command {
     private ArgOptional[] generateArgOptionals() {
         auto args = this.args_.filter!(a => a.isOptional()).array();
         return args.map!(a => ArgOptional(
-                a.name_,
+                a.id_,
                 a.helpText_,
                 a.genShort(),
                 a.genLong(),
@@ -190,7 +190,7 @@ unittest {
                 .defaultValue(123))
         .build();
 
-    assert(parser.name_ == "command");
+    assert(parser.id_ == "command");
     assert(parser.helpText_ == "Help for command.");
     assert(parser.shortDescription_ == "summary");
     assert(parser.positionals_ == [
@@ -228,16 +228,16 @@ unittest {
                 .optShort())
         .build();
 
-    assert(parser.name_ == "command");
+    assert(parser.id_ == "command");
     assert(parser.positionals_.length == 0);
     assert(parser.optionals_.length == 1);
     assert(parser.subParsers_.length == 2);
 
-    assert(parser.subParsers_[0].name_ == "sub1");
+    assert(parser.subParsers_[0].id_ == "sub1");
     assert(parser.subParsers_[0].positionals_.length == 1);
     assert(parser.subParsers_[0].positionals_[0].id == "foo");
 
-    assert(parser.subParsers_[1].name_ == "sub2");
+    assert(parser.subParsers_[1].id_ == "sub2");
     assert(parser.subParsers_[1].positionals_.length == 1);
     assert(parser.subParsers_[1].positionals_[0].id == "bar");
 }
