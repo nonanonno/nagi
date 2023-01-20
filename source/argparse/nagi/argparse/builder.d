@@ -54,11 +54,11 @@ struct Arg {
         return this;
     }
 
-    package string id_;
+    package string id_ = null;
     package string helpText_ = null;
     package string optShort_ = null;
     package string optLong_ = null;
-    package bool isRequired_;
+    package Ternary isRequired_ = Ternary.unknown;
     package NArgs nArgs_ = NArgs.init;
     package ArgValue defaultValue_;
 
@@ -138,7 +138,7 @@ struct Command {
         return args.map!(a => ArgPositional(
                 a.id_,
                 a.helpText_,
-                a.isRequired_,
+                a.isRequired_ != Ternary.no,
                 a.nArgs_,
                 &defaultArgPositionalAction,
                 a.defaultValue_,
@@ -152,7 +152,7 @@ struct Command {
                 a.helpText_,
                 a.genShort(),
                 a.genLong(),
-                a.isRequired_,
+                a.isRequired_ == Ternary.yes,
                 a.nArgs_,
                 &defaultArgOptionalAction,
                 a.defaultValue_,
@@ -185,6 +185,7 @@ unittest {
                 .nArgs("*"))
         .arg(Arg("foo").optLong())
         .arg(Arg("default")
+                .required(false)
                 .defaultValue("ABC"))
         .arg(Arg("defaultOpt")
                 .optShort()
@@ -196,7 +197,7 @@ unittest {
     assert(parser.shortDescription_ == "summary");
     assert(parser.positionals_ == [
             ArgPositional("name", "Help for name.", true, fromText("."), &defaultArgPositionalAction),
-            ArgPositional("num", null, false, fromText("."), &defaultArgPositionalAction),
+            ArgPositional("num", null, true, fromText("."), &defaultArgPositionalAction),
             ArgPositional("default", null, false, fromText("."), &defaultArgPositionalAction, ArgValue(
                 "ABC")),
         ], text(parser.positionals_));
