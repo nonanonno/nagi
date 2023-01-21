@@ -105,7 +105,7 @@ bool argPositionalIsFilled(string id, NArgs nArgs, ParseResult result) {
 @("defaultArgPositionalAction for NArgsOption.one, zeroOrOne")
 unittest {
     foreach (txt; [".", "?"]) {
-        auto nArgs = fromText(txt);
+        auto nArgs = NArgs(txt);
         auto id = "id";
         auto result = new ParseResult();
 
@@ -131,7 +131,7 @@ unittest {
             TestCase(["ABC", "DEF", "--", "GHI"], 2, ["ABC", "DEF"]),
         ]) {
         foreach (txt; ["*", "+"]) {
-            auto nArgs = fromText(txt);
+            auto nArgs = NArgs(txt);
             auto result = new ParseResult();
 
             parseResultInitialize(id, nArgs, result);
@@ -143,7 +143,7 @@ unittest {
 
     // Case for append
     foreach (txt; ["*", "+"]) {
-        auto nArgs = fromText(txt);
+        auto nArgs = NArgs(txt);
         auto result = new ParseResult();
 
         parseResultInitialize(id, nArgs, result);
@@ -174,7 +174,7 @@ unittest {
             TestCase(3, ["ABC", "DEF", "GHI", "JKL"], 3, ["ABC", "DEF", "GHI"]),
             TestCase(3, ["ABC", "DEF", "--", "GHI", "JKL"], 2, ["ABC", "DEF"]),
         ]) {
-        auto nArgs = fromText(c.n);
+        auto nArgs = NArgs(c.n);
         auto result = new ParseResult();
 
         parseResultInitialize(id, nArgs, result);
@@ -186,7 +186,7 @@ unittest {
 
     // Case for splitting by flag
     {
-        auto nArgs = fromText(3);
+        auto nArgs = NArgs(3);
         auto result = new ParseResult();
         parseResultInitialize(id, nArgs, result);
         assert(defaultArgPositionalAction(["ABC", "DEF", "-f", "FOO"], id, nArgs, result) == 2);
@@ -292,7 +292,7 @@ unittest {
         string result;
     }
 
-    auto nArgs = fromText(".");
+    auto nArgs = NArgs(".");
     auto id = "id";
 
     foreach (c; [
@@ -324,7 +324,7 @@ unittest {
         string result;
     }
 
-    auto nArgs = fromText("?");
+    auto nArgs = NArgs("?");
     auto id = "id";
 
     foreach (c; [
@@ -369,7 +369,7 @@ unittest {
             TestCase(["-o", "ABC", "DEF"], 3, ["ABC", "DEF"]),
         ]) {
         foreach (txt; ["*", "+"]) {
-            auto nArgs = fromText(txt);
+            auto nArgs = NArgs(txt);
             auto result = new ParseResult();
 
             parseResultInitialize(id, nArgs, result);
@@ -381,7 +381,7 @@ unittest {
 
     // Case for append
     foreach (txt; ["*", "+"]) {
-        auto nArgs = fromText(txt);
+        auto nArgs = NArgs(txt);
         auto result = new ParseResult();
 
         parseResultInitialize(id, nArgs, result);
@@ -401,7 +401,7 @@ unittest {
     }
 
     auto id = "id";
-    auto nArgs = fromText(0);
+    auto nArgs = NArgs(0);
     foreach (c; [
             TestCase(["-o"], true),
             TestCase(["-o=true"], true),
@@ -440,7 +440,7 @@ unittest {
             TestCase(3, ["-o=", "DEF"], 1, []),
             // dfmt on
         ]) {
-        auto nArgs = fromText(c.n);
+        auto nArgs = NArgs(c.n);
         auto result = new ParseResult();
 
         parseResultInitialize(id, nArgs, result);
@@ -452,7 +452,7 @@ unittest {
 
     // Case for splitting by flag
     {
-        auto nArgs = fromText(3);
+        auto nArgs = NArgs(3);
         auto result = new ParseResult();
         parseResultInitialize(id, nArgs, result);
         assert(defaultArgOptionalAction(["-o", "ABC", "DEF", "-f", "FOO"], id, nArgs, result) == 3);

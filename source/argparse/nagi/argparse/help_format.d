@@ -34,19 +34,19 @@ unittest {
     assert(generateHelpItem(ArgPositional("123", "1234567890 1234567890"), 6, 10, 2)
             == "  [123]\n        1234567890\n        1234567890\n");
     assert(generateHelpItem(
-            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, fromText(0)),
+            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, NArgs(0)),
             24, 10, 2) == text(
             "  -o, --option            1234567890\n",
             "                          1234567890\n",
     ));
     assert(generateHelpItem(
-            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, fromText(".")),
+            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, NArgs(".")),
             24, 10, 2) == text(
             "  -o, --option <OPTION>   1234567890\n",
             "                          1234567890\n",
     ));
     assert(generateHelpItem(
-            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, fromText("*")),
+            ArgOptional("option", "1234567890 1234567890", "-o", "--option", false, NArgs("*")),
             24, 10, 2) == text(
             "  -o, --option <OPTION...>\n",
             "                          1234567890\n",
@@ -54,10 +54,10 @@ unittest {
     ));
     // defaults
     assert(generateHelpItem(
-            ArgPositional("name", "help", true, fromText("."), null, ArgValue("ABC")), 10, 60, 2) ==
+            ArgPositional("name", "help", true, NArgs("."), null, ArgValue("ABC")), 10, 60, 2) ==
             "  <NAME>    help [default: ABC]\n");
     assert(generateHelpItem(
-            ArgOptional("option", "help", "-o", "--option", false, fromText("*"), null, ArgValue([
+            ArgOptional("option", "help", "-o", "--option", false, NArgs("*"), null, ArgValue([
                 123.45, 456.78
             ])),
         10, 60, 2) == text(
@@ -136,11 +136,11 @@ unittest {
         ArgPositional("pos2", "Help message for pos2", false),
     ];
     auto optionals = [
-        ArgOptional("o", "Help message for option 1", "-o", "--opt", false, fromText(0)),
-        ArgOptional("p", "Help message for option 2", "-p", null, false, fromText(".")),
-        ArgOptional("q", "Help message for option 3", null, "--qqq", false, fromText("*")),
+        ArgOptional("o", "Help message for option 1", "-o", "--opt", false, NArgs(0)),
+        ArgOptional("p", "Help message for option 2", "-p", null, false, NArgs(".")),
+        ArgOptional("q", "Help message for option 3", null, "--qqq", false, NArgs("*")),
     ];
-    auto helpArg = ArgOptional("help", "Display this message", "-h", "--help", false, fromText(0));
+    auto helpArg = ArgOptional("help", "Display this message", "-h", "--help", false, NArgs(0));
     auto helpText = text(
         "This is a sample help message for testing. Since the message count is over 80, t",
         "he message will be wrapped.");
@@ -176,9 +176,9 @@ unittest {
     auto sub2 = new ArgumentParser();
 
     auto optionals = [
-        ArgOptional("o", "", "-o", "--opt", false, fromText(0)),
+        ArgOptional("o", "", "-o", "--opt", false, NArgs(0)),
     ];
-    auto helpArg = ArgOptional("help", "Display this messages", "-h", "--help", false, fromText(0));
+    auto helpArg = ArgOptional("help", "Display this messages", "-h", "--help", false, NArgs(0));
 
     sub1.id_ = "sub1";
     sub1.shortDescription_ = "Short description for sub1";

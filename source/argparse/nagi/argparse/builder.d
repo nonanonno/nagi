@@ -45,7 +45,7 @@ struct Arg {
     }
 
     Arg nArgs(T)(T txt) if (isIntegral!T || is(T : string)) {
-        this.nArgs_ = fromText(txt);
+        this.nArgs_ = NArgs(txt);
         return this;
     }
 
@@ -114,7 +114,7 @@ struct Command {
         ArgOptional helpOption;
         if (this.generateHelpOption_) {
             helpOption = ArgOptional("help", "Display this message.", "-h", "--help", false,
-                fromText(0), &defaultArgOptionalAction);
+                NArgs(0), &defaultArgOptionalAction);
         }
         auto parser = new ArgumentParser(
             this.id_,
@@ -201,23 +201,23 @@ unittest {
     assert(parser.helpText_ == "Help for command.");
     assert(parser.shortDescription_ == "summary");
     assert(parser.positionals_ == [
-            ArgPositional("name", "Help for name.", true, fromText("."), &defaultArgPositionalAction),
-            ArgPositional("num", null, true, fromText("."), &defaultArgPositionalAction),
-            ArgPositional("default", null, false, fromText("."), &defaultArgPositionalAction, ArgValue(
+            ArgPositional("name", "Help for name.", true, NArgs("."), &defaultArgPositionalAction),
+            ArgPositional("num", null, true, NArgs("."), &defaultArgPositionalAction),
+            ArgPositional("default", null, false, NArgs("."), &defaultArgPositionalAction, ArgValue(
                 "ABC")),
         ], text(parser.positionals_));
 
     assert(parser.optionals_ == [
-            ArgOptional("config", "Help for config.", "-c", "--config", true, fromText("."), &defaultArgOptionalAction),
-            ArgOptional("flag", "Help for flag.", "-f", null, false, fromText(0), &defaultArgOptionalAction),
-            ArgOptional("environment", "Help for environment.", null, "--env", false, fromText("*"),
+            ArgOptional("config", "Help for config.", "-c", "--config", true, NArgs("."), &defaultArgOptionalAction),
+            ArgOptional("flag", "Help for flag.", "-f", null, false, NArgs(0), &defaultArgOptionalAction),
+            ArgOptional("environment", "Help for environment.", null, "--env", false, NArgs("*"),
                 &defaultArgOptionalAction),
-            ArgOptional("foo", null, null, "--foo", false, fromText("."), &defaultArgOptionalAction),
-            ArgOptional("defaultOpt", null, "-d", null, false, fromText("."), &defaultArgOptionalAction, ArgValue(
+            ArgOptional("foo", null, null, "--foo", false, NArgs("."), &defaultArgOptionalAction),
+            ArgOptional("defaultOpt", null, "-d", null, false, NArgs("."), &defaultArgOptionalAction, ArgValue(
                 123)),
         ], text(parser.optionals_));
     assert(parser.helpOption_ == ArgOptional("help", "Display this message.", "-h", "--help", false,
-            fromText(0), &defaultArgOptionalAction));
+            NArgs(0), &defaultArgOptionalAction));
 
     assert(parser.subParsers_.length == 0);
 }

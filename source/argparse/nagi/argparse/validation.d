@@ -17,12 +17,12 @@ void checkPositionalsConsistency(in ArgPositional[] positionals) {
     bool hasNonRequired = false;
     foreach (i, a; positionals) {
         enforce!ArgumentException(a.id && a.id != "", text(i, "th positional argument's id is empty"));
-        enforce!ArgumentException(a.nArgs != fromText(0), text(a.nArgs, " for nArgs is not allowed for positional"));
+        enforce!ArgumentException(a.nArgs != NArgs(0), text(a.nArgs, " for nArgs is not allowed for positional"));
         enforce!ArgumentException(!foundSequence,
             text(a.id, " is never set because some unbounded sequence is already defined."));
         enforce!ArgumentException(!hasNonRequired || !a.isRequired,
             text("Required argument ", a.id, " is not allowed after the non-required positional argument"));
-        if (a.nArgs == fromText("*") || a.nArgs == fromText("+")) {
+        if (a.nArgs == NArgs("*") || a.nArgs == NArgs("+")) {
             foundSequence = true;
         }
         if (!a.isRequired) {
@@ -42,14 +42,14 @@ unittest {
     assertThrown(checkPositionalsConsistency([ArgPositional()]));
     assertThrown(checkPositionalsConsistency([ArgPositional("")]));
     assertThrown(checkPositionalsConsistency([
-            ArgPositional("a", "", true, fromText(0))
+            ArgPositional("a", "", true, NArgs(0))
         ]));
     assertThrown(checkPositionalsConsistency([
-            ArgPositional("a", "", true, fromText("*")),
+            ArgPositional("a", "", true, NArgs("*")),
             ArgPositional("b", "", true),
         ]));
     assertThrown(checkPositionalsConsistency([
-            ArgPositional("a", "", true, fromText("+")),
+            ArgPositional("a", "", true, NArgs("+")),
             ArgPositional("b", "", true),
         ]));
     assertThrown(checkPositionalsConsistency([
@@ -64,7 +64,7 @@ unittest {
 
     assertNotThrown(checkPositionalsConsistency([ArgPositional("a")]));
     assertNotThrown(checkPositionalsConsistency([
-            ArgPositional("a", "", true, fromText(1))
+            ArgPositional("a", "", true, NArgs(1))
         ]));
     assertNotThrown(checkPositionalsConsistency([
             ArgPositional("a", "", true), ArgPositional("b", "", true)
@@ -73,14 +73,14 @@ unittest {
             ArgPositional("a", "", true), ArgPositional("b", "", false)
         ]));
     assertNotThrown(checkPositionalsConsistency([
-            ArgPositional("a", "", true, fromText(".")),
-            ArgPositional("b", "", true, fromText("?")),
-            ArgPositional("c", "", true, fromText("*")),
+            ArgPositional("a", "", true, NArgs(".")),
+            ArgPositional("b", "", true, NArgs("?")),
+            ArgPositional("c", "", true, NArgs("*")),
         ]));
     assertNotThrown(checkPositionalsConsistency([
-            ArgPositional("a", "", true, fromText(".")),
-            ArgPositional("b", "", true, fromText("?")),
-            ArgPositional("c", "", true, fromText("+")),
+            ArgPositional("a", "", true, NArgs(".")),
+            ArgPositional("b", "", true, NArgs("?")),
+            ArgPositional("c", "", true, NArgs("+")),
         ]));
 }
 
@@ -207,16 +207,16 @@ void checkRequired(T)(in Counter!T arg) {
 
 unittest {
     {
-        auto a = Counter!ArgPositional(ArgPositional("id", "", false, fromText(".")));
+        auto a = Counter!ArgPositional(ArgPositional("id", "", false, NArgs(".")));
         assertNotThrown!ArgumentException(checkRequired(a));
     }
     {
-        auto a = Counter!ArgPositional(ArgPositional("id", "", true, fromText(".")));
+        auto a = Counter!ArgPositional(ArgPositional("id", "", true, NArgs(".")));
         a.count = 1;
         assertNotThrown!ArgumentException(checkRequired(a));
     }
     {
-        auto a = Counter!ArgPositional(ArgPositional("id", "", true, fromText(".")));
+        auto a = Counter!ArgPositional(ArgPositional("id", "", true, NArgs(".")));
         assertThrown!ArgumentException(checkRequired(a));
     }
 }
@@ -251,35 +251,35 @@ void checkNARgs(T)(in T arg, ParseResult result) {
 unittest {
     auto id = "id";
     foreach (txt; [".", "?", "*", "+"]) {
-        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText(txt)), new ParseResult()));
+        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs(txt)), new ParseResult()));
     }
     foreach (n; [0, 1, 2, 3]) {
-        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText(n)), new ParseResult()));
+        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs(n)), new ParseResult()));
     }
     foreach (txt; [".", "?"]) {
         auto result = new ParseResult();
         result["id"] = "ABC";
-        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText(txt)), result));
+        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs(txt)), result));
     }
     {
         auto result = new ParseResult();
         result["id"] = cast(string[])[];
-        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText("*")), result));
+        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs("*")), result));
     }
     {
         auto result = new ParseResult();
         result["id"] = ["ABC"];
-        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText("+")), result));
+        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs("+")), result));
     }
     {
         auto result = new ParseResult();
         result["id"] = false;
-        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText(0)), result));
+        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs(0)), result));
     }
     {
         auto result = new ParseResult();
         result["id"] = cast(string[])[];
-        assertThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText("+")), result));
+        assertThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs("+")), result));
     }
     foreach (n; [1, 2, 3]) {
         import std.array;
@@ -287,7 +287,7 @@ unittest {
 
         auto result = new ParseResult();
         result["id"] = repeat("aaa", n).array();
-        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText(n)), result));
+        assertNotThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs(n)), result));
     }
 
     foreach (n; [1, 2, 3]) {
@@ -296,8 +296,8 @@ unittest {
 
         auto result = new ParseResult();
         result["id"] = repeat("aaa", 0).array();
-        assertThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText(n)), result));
+        assertThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs(n)), result));
         result["id"] = repeat("aaa", 10).array();
-        assertThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, fromText(n)), result));
+        assertThrown!ArgumentException(checkNARgs(ArgPositional(id, "", false, NArgs(n)), result));
     }
 }

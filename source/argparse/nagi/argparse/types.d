@@ -52,42 +52,57 @@ class ParseResult {
     }
 }
 
-package enum NArgsOption {
+enum NArgsOption {
     one = ".",
     zeroOrOne = "?",
     moreThanEqualZero = "*",
     moreThanEqualOne = "+",
 }
 
-package alias NArgs = SumType!(NArgsOption, uint);
+struct NArgs {
+    alias config this;
 
-NArgs fromText(T)(T txt) if (isIntegral!T || is(T : string)) {
-
-    static if (isIntegral!T) {
-        assert(txt >= 0, text("nargs should be greater than equal 0"));
-        NArgs a = txt.to!uint;
-        return a;
+    this(T)(T txt) {
+        this = txt;
     }
-    else static if (is(T : string)) {
+
+    auto opAssign(T)(T n) if (isIntegral!T)
+    in (n >= 0, text("`n` should be greater than equal 0")) {
+        this.config = to!uint(n);
+        return this;
+    }
+
+    auto opAssign(T)(T txt) if (isSomeString!T)
+    in (canFind([EnumMembers!NArgsOption], txt), text("Unknown nArgs : ", txt)) {
         foreach (mem; EnumMembers!NArgsOption) {
             if (mem == txt) {
-                NArgs a = mem;
-                return a;
+                this.config = mem;
+                return;
             }
         }
-        assert(false, text("Unknown nargs identifier: ", txt));
+        assert(0);
     }
+
+    string toString() const @safe pure {
+        return this.config.toString();
+    }
+
+    SumType!(NArgsOption, uint) config;
 }
 
 unittest {
-    assert(NArgs.init == NArgs(NArgsOption.one));
+    auto select(T)(NArgs args) {
+        return args.match!((T a) => a, (_) => assert(0));
+    }
 
-    assert(fromText(0) == NArgs(0));
-    assert(fromText(1) == NArgs(1));
-    assert(fromText(".") == NArgs(NArgsOption.one));
-    assert(fromText("?") == NArgs(NArgsOption.zeroOrOne));
-    assert(fromText("*") == NArgs(NArgsOption.moreThanEqualZero));
-    assert(fromText("+") == NArgs(NArgsOption.moreThanEqualOne));
+    assert(select!NArgsOption(NArgs.init) == NArgsOption.one);
+    assert(select!uint(NArgs(0)) == 0);
+    assert(select!uint(NArgs(1)) == 1);
+    assert(select!uint(NArgs(2)) == 2);
+    assert(select!NArgsOption(NArgs(".")) == NArgsOption.one);
+    assert(select!NArgsOption(NArgs("?")) == NArgsOption.zeroOrOne);
+    assert(select!NArgsOption(NArgs("*")) == NArgsOption.moreThanEqualZero);
+    assert(select!NArgsOption(NArgs("+")) == NArgsOption.moreThanEqualOne);
 }
 
 package struct ArgPositional {
