@@ -149,3 +149,7 @@ class ArgumentException : Exception {
 
     mixin basicExceptionCtors;
 }
+
+bool isEmpty(T)(in T arg) {
+    return arg.id is null;
+}

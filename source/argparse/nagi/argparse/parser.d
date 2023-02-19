@@ -11,9 +11,9 @@ import std.exception;
 import std.stdio : stdout, File;
 import nagi.argparse.types;
 import nagi.argparse.action;
-import nagi.argparse.help_format;
 import nagi.argparse.validation;
 import nagi.argparse.utils;
+import nagi.argparse.helpformat;
 
 class ArgumentParser {
     ParseResult parse(string[] argsWithCommandName, string[] commandPrefix) {
@@ -31,6 +31,7 @@ class ArgumentParser {
 
     package this() {
         messageSink_ = stdout;
+        helpBuilder_ = new HelpBuilder();
     }
 
     package this(
@@ -50,6 +51,7 @@ class ArgumentParser {
         this.helpOption_ = helpOption;
         this.subParsers_ = subParsers;
         messageSink_ = stdout;
+        helpBuilder_ = new HelpBuilder();
     }
 
     package string id_;
@@ -60,6 +62,7 @@ class ArgumentParser {
     package ArgOptional helpOption_;
     package ArgumentParser[] subParsers_;
     package File messageSink_;
+    package HelpBuilderInterface helpBuilder_;
 
     package void checkConfiguration() {
         assertNotThrown!ArgumentException(
@@ -95,9 +98,8 @@ class ArgumentParser {
             if (canFind(argsWithCommandName, helpOption_.optShort) ||
                 canFind(argsWithCommandName, helpOption_.optLong)
                 ) {
-                messageSink_.writeln(generateHelpMessage((commandPrefix ~ argsWithCommandName[0])
-                        .join(" "), this.helpText_, this.positionals_, this
-                        .subParsers_, this.optionals_, this.helpOption_));
+                messageSink_.writeln(helpBuilder_.build((commandPrefix ~ argsWithCommandName[0])
+                        .join(" ")));
                 return null;
             }
         }
@@ -132,9 +134,8 @@ class ArgumentParser {
         auto argsForSubParser = parseImplForSubParser(argsWithCommandName[1 .. $], optionals, result);
 
         if (helpOption_.id && helpOption_.id in result) {
-            messageSink_.writeln(generateHelpMessage((commandPrefix ~ argsWithCommandName[0])
-                    .join(" "), this.helpText_, this.positionals_, this
-                    .subParsers_, this.optionals_, this.helpOption_));
+            messageSink_.writeln(helpBuilder_.build((commandPrefix ~ argsWithCommandName[0])
+                    .join(" ")));
             return null;
         }
 
