@@ -102,7 +102,7 @@ version (ansi) {
      * Build an ESC code sequence with multiple color and glyph codes.
      * Params:
      *      code = A color/glyph code
-     *      codes =  Extra codes (optional)
+     *      extraCodes =  Extra codes (optional)
      * Returns: ESC code sequence
      */
     string build(Codes...)(Code code, Codes extraCodes) pure nothrow {
@@ -256,23 +256,23 @@ debug (Example) unittest {
     import std.stdio : write;
 
     static foreach (i, color; [
-            "reset", "bold", "dim", "italic", "underline", "blinking", "inverse",
-            "strikethrough",
-        ]) {
+        "reset", "bold", "dim", "italic", "underline", "blinking", "inverse",
+        "strikethrough",
+    ]) {
         mixin(`write("` ~ color ~ `".` ~ color ~ `, " ");`);
     }
     write("\n");
     static foreach (i, color; [
-            "black", "red", "green", "yellow", "blue", "magenta", "cyan", "white",
-            "default_",
-        ]) {
+        "black", "red", "green", "yellow", "blue", "magenta", "cyan", "white",
+        "default_",
+    ]) {
         mixin(`write("` ~ color ~ `".` ~ color ~ `, " ");`);
     }
     write("\n");
     static foreach (i, color; [
-            "bblack", "bred", "bgreen", "byellow", "bblue", "bmagenta", "bcyan",
-            "bwhite", "bdefault_",
-        ]) {
+        "bblack", "bred", "bgreen", "byellow", "bblue", "bmagenta", "bcyan",
+        "bwhite", "bdefault_",
+    ]) {
         mixin(`write("` ~ color ~ `".` ~ color ~ `, " ");`);
     }
     write("\n");
